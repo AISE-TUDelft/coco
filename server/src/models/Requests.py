@@ -31,3 +31,11 @@ class VerifyRequest(BaseModel):
     chosen_model: Union[str, None]  # the model chosen by the user
     ground_truth: str  # the ground truth of the completion
 
+
+class SurveyRequest(BaseModel):
+    """
+    The SurveyRequest class is a Pydantic BaseModel class that defines the structure of the survey request.
+    This request is meant to be used along with the /survey endpoint.
+    It is used to gain input about the user's experience with the extension.
+    """
+    user_id: str  # uuid
