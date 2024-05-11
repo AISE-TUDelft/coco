@@ -1,3 +1,5 @@
 # CoCo Server
 
-This will be the description of the server
+- [`api`](./api) contains the exposed api and request logic 
+- [`database`](./database) contains database-related backend logic.
+- [`tests`](./tests) contains our tests, of course!

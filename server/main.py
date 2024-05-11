@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from starlette.responses import FileResponse
-from api_versions.v3 import router as v3_router
+from api.v3 import router as v3_router
 app = FastAPI(
     title="CoCo API",
     description="The CoCo API is a RESTful API that provides code completion services to the CoCo IDE plugin.",

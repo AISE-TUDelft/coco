@@ -189,8 +189,8 @@ This table contains all the completions that have been generated; the actual cod
 - as per the design of postgreSQL the `TEXT` datatype is used to store large amounts of text. This is to ensure that the database can store the code that has been generated without any truncation. (this is synonymous with the `CLOB` datatype in Oracle and the `TEXT` datatype in MySQL)
 - the designs have been exclusively tested on postgreSQL and as such the syntax used in the initialization script is specific to postgreSQL. The script may need to be modified to work with other SQL databases.
 
-The initialization script for the database can be found [here](./init.sql)
-The PGERD file for the database can be found [here](../resources/desgin_files/db_schema.pgerd)
+The initialization script for the database can be found [here](init.sql)
+The PGERD file for the database can be found [here](resources/design_files/db_schema.pgerd)
 
 ## TODO
 
@@ -236,4 +236,4 @@ We will probably add more customisation options for users like the ability to tu
 ---
 #### Image of database design
 
-![Database Design](../resources/media/coco_db_schema.png)
+![Database Design](resources/media/coco_db_schema.png)
