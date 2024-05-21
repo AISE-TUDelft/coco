@@ -162,6 +162,9 @@ The ground truth is the code that the user was actually looking for when they re
 - The database has been designed to favor OLTP operations over OLAP operations in order to provide a faster response time for the users.
 - The database has been designed to be used with a REST API.
 
+## Updates
+*The database as presented in the init_sql file is basically the base schema for the database. The database is subject to change in the future as the requirements of the project change. A guide to adding updates to the database can be found [here](updates/updates.md)*
+
 ## design decisions
 - all times which are stored as integers are stored in milliseconds. This is to ensure that the time taken to generate the code is stored in a consistent manner.
 - a cascade of deletion has been implemented based upon the foreign key constraint of `request_id` in the table `completion`. This is to ensure that when a generation request is deleted, all the completions associated with that request are also deleted. This is to ensure that the database does not contain any orphaned entries.

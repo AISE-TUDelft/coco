@@ -14,4 +14,4 @@ class CoCoConfig(BaseSettings):
     database_url: Optional[str]  # the url to the database
 
     class Config:
-        env_file = "coco.env"
+        env_file = "../coco.env"
