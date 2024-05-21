@@ -2,5 +2,5 @@ fastapi~=0.111.0
 starlette~=0.37.2
 pydantic~=2.7.1
 fastapi-limiter~=0.1.6
-
+psycopg2~=2.9.1
 SQLAlchemy~=2.0.30
