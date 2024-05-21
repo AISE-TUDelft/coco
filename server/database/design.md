@@ -46,7 +46,7 @@ erDiagram
         INTEGER model_id FK
         TEXT completion
         INTEGER generation_time
-        INTEGER[] shown_at_offset
+        TIMESTAMP[] shown_at
         BOOLEAN was_accepted
         DOUBLE confidence
     }
@@ -88,36 +88,6 @@ The (optional) description field can be used to provide a brief description of t
 - `ide_type: TEXT` Type of the IDE for which the version is available.
 - `description: TEXT` Description of the version, *Optional*.
 
-> [!NOTE]: does it not make more sense to merge `version_name` and `version_id` into one field? If we use semantic versioning; this should suffice as an identifier. I.e. just have a field `version_id: TEXT` containing the semantic version. 
-> In fact, I would actually put this under `ide_type`, given that we may have different versions per IDE. Ideally we would keep the versions between different IDEs in sync, but in the real world we will run into bugs and probably push `x.x.1` little updates to each plugin. So my proposal becomes:
-
-```
-# plugin_version
-- `version_id`: primary key
-- `ide_type`: primary key
-- `description`: text
-
-
-query has plugin_version (rather than both ide_type and version_id)
-plugin_version has ide_type 
-```
-
-> [!REMARK]: I do agree with you that probably moving the ide_type to the plugin_version table would be a better idea. This would allow for a more modular design and would allow for same versions for different ide_types and with different feature sets at each given version.
-> 
-> I do have a remark/concern about having `version_id` and `ide_type` as a composite primary key in the `plugin_version` table. Given that these two, together, are the identifier of a given description having them both would be necessary in the query table to properly identify the relevant version of the plugin. Additionally, what you point at was also my intention with how I designed the table in the first place. To have the version_id be a single integer value as the id and then the version be as you describe it. With this, adding additional columns to the plugin_version would not cause any anomalies down the line. (take an AB test scenario where you need an optional column to store the test group for example of a given ide version)
-> 
-> So to wrap this up I propose the following:
-
-```
-# plugin_version
-- `version_id`: Integer PK
-- `version_name`: TEXT
-- `ide_type`: TEXT
-- `description`: TEXT
-
-removal of the ide_type table and the renaming of the version_id table to plugin_version 
-```
-
 ### `trigger_type`
 This table contains the list of all the trigger types that are available.
 The trigger types are used to determine the type of trigger that is used to generate the code.
@@ -138,16 +108,6 @@ The models are used to determine the model that is used to generate the code.
 
 - &rarr;**`model_id: INTEGER`** Unique identifier for the model, **Primary Key**.
 - `model_name: TEXT` Name of the model.
-
-> [!NOTE] Is it necessary for `trigger_type`, `ide_type`, `programming_language`, and `model_name` to be their own tables? I'm not sure if this works with the database libraries you're using (or whether it remains 3NF), but a flatter layout can be more desirable for easier understanding. 
-
-> For instance, say I'm given a completion; to figure out whether it was invoked in `jetbrains` I need to look up the `ide_type_id` and then its corresponding `ide_name`. For someone not familiar with the plugin, knowing what values this can take requires exploring each table; and potentially keeping track of nesting and ids in data analysis. 
-
-> I'm not sure if there is a better way of doing it, you probably know better. If the option exists, I would add these four as (extensible) enum values on the `completion` table. Otherwise, can you explain to me why this is better (e.g. I don't have enough experience with databases to know whether these things are automatically flattened when retrieving a `generation`)
-
-> [!REMARK] I do agree with you that having the tables as separate entities does make it harder to understand the database schema. I do think that having the tables as separate entities does provide a certain level of modularity to the database schema. This would allow for the addition of new trigger types, programming languages, and models without having to change the schema of the database. Additionally, given that these two tables would be decoupled, it is less likely to have any sort of anomalies pop up given a potential changes in values or the addition of new values. Additionally, take the case we would want to also track versions of programming languages a user is utilizing to for example evaluate the acceptance of the completions generated when a user is programming in a older versino of java as opposed to a newer version. 
-> 
-> One more this to keep in mind, is that with the adapters that will be implemented on top of the database the data would be returned as the pydantic types that are defined for the project, so this is simply a level of abstraction that a user or analyst would not have to deal with. Everything will be handled through the providers of the adapter in the format that is "flattened".
 
 ### `query`
 This table contains the list of all the generations that have been requested.
@@ -183,7 +143,7 @@ This table contains all the completions that have been generated; the actual cod
 
 ###### Computed Client-Side (& MUTABLE)
 
-- `shown_at: INTEGER[]` The offset at which the completion was shown to the user (in milliseconds).
+- `shown_at: TIMESTAMP[]` The times at which the completion was shown to the user.
 - `was_accepted: BOOLEAN` Whether the completion was accepted or not.
 
 ### `ground_truth`
@@ -257,6 +217,49 @@ useful links
 
 #### User Patterns over Time
 We will probably add more customisation options for users like the ability to turn off completions on a given language, or to use ghost-text style completion instead of Intellisense-style. It would be nice to put in a table to keep track of user settings and how they evolve over time as well. 
+
+## Previous Discussions
+
+
+> [!NOTE]: does it not make more sense to merge `version_name` and `version_id` into one field? If we use semantic versioning; this should suffice as an identifier. I.e. just have a field `version_id: TEXT` containing the semantic version. 
+> In fact, I would actually put this under `ide_type`, given that we may have different versions per IDE. Ideally we would keep the versions between different IDEs in sync, but in the real world we will run into bugs and probably push `x.x.1` little updates to each plugin. So my proposal becomes:
+
+```
+# plugin_version
+- `version_id`: primary key
+- `ide_type`: primary key
+- `description`: text
+
+
+query has plugin_version (rather than both ide_type and version_id)
+plugin_version has ide_type 
+```
+
+> [!REMARK]: I do agree with you that probably moving the ide_type to the plugin_version table would be a better idea. This would allow for a more modular design and would allow for same versions for different ide_types and with different feature sets at each given version.
+> 
+> I do have a remark/concern about having `version_id` and `ide_type` as a composite primary key in the `plugin_version` table. Given that these two, together, are the identifier of a given description having them both would be necessary in the query table to properly identify the relevant version of the plugin. Additionally, what you point at was also my intention with how I designed the table in the first place. To have the version_id be a single integer value as the id and then the version be as you describe it. With this, adding additional columns to the plugin_version would not cause any anomalies down the line. (take an AB test scenario where you need an optional column to store the test group for example of a given ide version)
+> 
+> So to wrap this up I propose the following:
+
+```
+# plugin_version
+- `version_id`: Integer PK
+- `version_name`: TEXT
+- `ide_type`: TEXT
+- `description`: TEXT
+
+removal of the ide_type table and the renaming of the version_id table to plugin_version 
+```
+> [!NOTE] Is it necessary for `trigger_type`, `ide_type`, `programming_language`, and `model_name` to be their own tables? I'm not sure if this works with the database libraries you're using (or whether it remains 3NF), but a flatter layout can be more desirable for easier understanding. 
+
+> For instance, say I'm given a completion; to figure out whether it was invoked in `jetbrains` I need to look up the `ide_type_id` and then its corresponding `ide_name`. For someone not familiar with the plugin, knowing what values this can take requires exploring each table; and potentially keeping track of nesting and ids in data analysis. 
+
+> I'm not sure if there is a better way of doing it, you probably know better. If the option exists, I would add these four as (extensible) enum values on the `completion` table. Otherwise, can you explain to me why this is better (e.g. I don't have enough experience with databases to know whether these things are automatically flattened when retrieving a `generation`)
+
+> [!REMARK] I do agree with you that having the tables as separate entities does make it harder to understand the database schema. I do think that having the tables as separate entities does provide a certain level of modularity to the database schema. This would allow for the addition of new trigger types, programming languages, and models without having to change the schema of the database. Additionally, given that these two tables would be decoupled, it is less likely to have any sort of anomalies pop up given a potential changes in values or the addition of new values. Additionally, take the case we would want to also track versions of programming languages a user is utilizing to for example evaluate the acceptance of the completions generated when a user is programming in a older versino of java as opposed to a newer version. 
+> 
+> One more this to keep in mind, is that with the adapters that will be implemented on top of the database the data would be returned as the pydantic types that are defined for the project, so this is simply a level of abstraction that a user or analyst would not have to deal with. Everything will be handled through the providers of the adapter in the format that is "flattened".
+
 
 ---
 #### Image of database design

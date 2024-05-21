@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.had_generation
     model_id integer NOT NULL,
     completion text NOT NULL,
     generation_time integer NOT NULL,
-    shown_at_offset integer[] NOT NULL,
+    shown_at timestamp with time zone[] NOT NULL,
     was_accepted boolean NOT NULL,
     confidence double precision NOT NULL,
     PRIMARY KEY (query_id, model_id)
