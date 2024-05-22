@@ -1,3 +1,7 @@
+## Database Schema for CoCo
+
+**Note: image of database design available at the end of the document**
+
 ```mermaid
 erDiagram
     USER {
@@ -66,10 +70,6 @@ erDiagram
     HAD_GENERATION }o--|| MODEL_NAME : utilizes
 
 ```
-
-## Database Schema for CoCo
-
-**Note: image of database design available at the end of the document**
 
 ## Tables
 ### `user`

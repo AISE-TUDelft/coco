@@ -5,7 +5,7 @@ from api.api import router as v3_router
 
 app = FastAPI(
     title       = 'CoCo API',
-    description = 'The CoCo API is a RESTful API that provides code completion services to the CoCo IDE plugin.',
+    description = 'RESTful API that provides code completion services to the CoCo IDE plugin.',
     version     = '0.0.1',
 )
 

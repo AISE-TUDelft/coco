@@ -2,13 +2,13 @@ from fastapi_limiter.depends import RateLimiter
 from fastapi import APIRouter, Depends
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from models.Requests import GenerateRequest, VerifyRequest, SurveyRequest
-from models.Responses import GenerateResponse, VerifyResponse, SurveyResponse
-from models.CoCoConfig import CoCoConfig
-from models.Query import Query
+from database.models.Requests import GenerateRequest, VerifyRequest, SurveyRequest
+from database.models.Responses import GenerateResponse, VerifyResponse, SurveyResponse
+from database.models.CoCoConfig import CoCoConfig
+from database.models.Query import Query
 
 router = APIRouter()
-config = CoCoConfig()
+config = CoCoConfig(survey_link='survey.link', database_url='database.url')
 
 @router.post("/prediction/autocomplete", dependencies=[Depends(RateLimiter(times=1000, hours=1))])
 async def autocomplete_v3(gen_req: GenerateRequest) -> GenerateResponse:
