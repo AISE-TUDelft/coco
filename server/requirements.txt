@@ -4,5 +4,8 @@ pydantic~=2.7.1
 fastapi-limiter~=0.1.6
 pydantic_settings
 
-psycopg2~=2.9.1
+psycopg2-binary 
 SQLAlchemy~=2.0.30
+
+langchain 
+langchain-community[vllm]
