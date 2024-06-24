@@ -10,6 +10,7 @@ from database.models.Query import Query
 router = APIRouter()
 config = CoCoConfig(survey_link='survey.link', database_url='database.url')
 
+# TODO: Try streaming to reduce latency 
 @router.post("/prediction/autocomplete", dependencies=[Depends(RateLimiter(times=1000, hours=1))])
 async def autocomplete_v3(gen_req: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(time=0.0, completions={})
