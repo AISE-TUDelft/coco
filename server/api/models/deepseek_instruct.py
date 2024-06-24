@@ -31,33 +31,23 @@ To best leverage FIM, we should use a Base model (as opposed to Instruct).
 '''
 
 from langchain.chains import LLMChain
-from langchain_community import VLLM 
+from langchain_community.llms.vllm import VLLM 
 from langchain_core.prompts import PromptTemplate
-
-'''
-TEMPLATES. DeepSeek-Coder (v1) base models support (disjoint) two types of completion:
-1. Code Insertion (FIM)
-2. Repo-level Code Completion 
-
-# TODO: Repo-level code completion is useful with RAG. I'm sticking to FIM for now. 
-'''
-
-template = '''<|fim_begin|>{prefix}<|fim_hole|>{suffix}<|fim_end|>'''
-prompt = PromptTemplate.from_template(template)
 
 ''' 
 VLLM Engine. Supported features: 
 1. Tensor parallelism (multi-GPU inference)
 2. AWQ Quantisation (3/4 bit, 3.2x speedup, see https://github.com/mit-han-lab/llm-awq)
+3. Automatic Prefix Caching (APC) for long-document queries and multi-round conversation. 
 '''
 
 llm = VLLM(
-    model_name='deepseek-ai/deepseek-coder-1.3b-base',
+    model='deepseek-ai/deepseek-coder-1.3b-instruct',
     trust_remote_code=True, 
+    vllm_kwargs=dict(max_model_len=10_000),           # default at 0.9 utilisation: 65536
+    temperature=0,
 )
-
-llm_chain = LLMChain(prompt=prompt, llm=llm)
 
 # to manually test this file by running it
 if __name__ == '__main__':
-    print(llm_chain.invoke('What is the capital of france?'))
+    print(llm.invoke('What is the capital of France?')) 

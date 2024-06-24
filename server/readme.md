@@ -6,7 +6,10 @@
 - [`tests`](./tests) contains our tests, of course!
 
 #### Installation 
-With Python `3.12`, install via 
+> [!NOTE]
+> `vllm`, our inference engine, is supported only on Linux and direct installations assume CUDA 12.1 for its precompiled kernels. 
+
+With Python `3.11` ([requirement in `vllm`](https://docs.vllm.ai/en/stable/getting_started/installation.html)), install via 
 
 ```py
 pip install -r requirements.txt
@@ -16,7 +19,7 @@ pip install -r requirements.txt
 To run the server, use 
 
 ```py
-# TODO: probably should update this to pass in the correct survey_link and db_url
+# TODO: update this to pass in the correct survey_link and db_url
 fastapi dev main.py
 ```
 

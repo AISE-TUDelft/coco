@@ -7,5 +7,7 @@ pydantic_settings
 psycopg2-binary 
 SQLAlchemy~=2.0.30
 
+torch
 langchain 
-langchain-community[vllm]
+langchain-community
+vllm
