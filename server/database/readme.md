@@ -5,69 +5,85 @@
 ```mermaid
 erDiagram
     USER {
-        UUID token PK
-        TIMESTAMP joined_at
+        uuid token PK
+        timestamp joined_at
     }
-
+    
     QUERY {
-        UUID query_id PK
-        UUID user_id FK
-        TEXT prefix
-        TEXT suffix
-        INTEGER trigger_type_id FK
-        INTEGER language_id FK
-        INTEGER version_id FK
-        INTEGER total_serving_time
-        INTEGER time_since_last_completion
-        TIMESTAMP query_timestamp
-        INTEGER server_version_id
+        uuid query_id PK
+        uuid user_id
+        uuid telemetry_id
+        uuid context_id
+        int total_serving_time
+        timestamp timestamp
+        int server_version_id
     }
-
+    
     MODEL_NAME {
-        INTEGER model_id PK
-        TEXT model_name
+        int model_id PK
+        text model_name
     }
-
+    
     PLUGIN_VERSION {
-        INTEGER version_id PK
-        TEXT version_name
-        TEXT ide_type
-        TEXT description
+        int version_id PK
+        text version_name
+        text ide_type
+        text description
     }
-
+    
     TRIGGER_TYPE {
-        INTEGER trigger_type_id PK
-        TEXT trigger_type_name
+        int trigger_type_id PK
+        text trigger_type_name
     }
-
+    
     PROGRAMMING_LANGUAGE {
-        INTEGER language_id PK
-        TEXT language_name
+        int language_id PK
+        text language_name
     }
-
+    
     HAD_GENERATION {
-        UUID query_id FK
-        INTEGER model_id FK
-        TEXT completion
-        INTEGER generation_time
-        TIMESTAMP[] shown_at
-        BOOLEAN was_accepted
-        DOUBLE confidence
+        uuid query_id PK
+        int model_id PK
+        text completion
+        int generation_time
+        timestamp[] shown_at
+        boolean was_accepted
+        double confidence
     }
-
+    
     GROUND_TRUTH {
-        UUID query_id FK
-        TIMESTAMP truth_timestamp PK
-        TEXT ground_truth
+        uuid query_id PK
+        timestamp truth_timestamp PK
+        text ground_truth
     }
-
+    
+    CONTEXT {
+        uuid context_id PK
+        text prefix
+        text suffix
+        int language_id
+        int trigger_type_id
+        int version_id
+    }
+    
+    TELEMETRY {
+        uuid telemetry_id PK
+        int time_since_last_completion
+        int typing_speed
+        int document_char_length
+        double relative_document_position
+    }
+    
     USER ||--o{ QUERY : has
-    QUERY ||--o{ HAD_GENERATION : triggers
-    QUERY ||--o{ GROUND_TRUTH : has
-    QUERY }o--|| PLUGIN_VERSION : uses
-    QUERY }o--|| TRIGGER_TYPE : was_triggered_by
-    QUERY }o--|| PROGRAMMING_LANGUAGE : programs_in
-    HAD_GENERATION }o--|| MODEL_NAME : utilizes
+    QUERY ||--o{ HAD_GENERATION : generates
+    QUERY ||--o{ GROUND_TRUTH : having
+    QUERY }o--|| TELEMETRY : uses
+    QUERY }o--|| CONTEXT : bound_by
+    CONTEXT }o--|| PROGRAMMING_LANGUAGE : written_in
+    CONTEXT }o--|| TRIGGER_TYPE : triggered_by
+    CONTEXT }o--|| PLUGIN_VERSION : using
+    HAD_GENERATION }o--|| MODEL_NAME : using
+
 
 ```
 
@@ -106,38 +122,36 @@ The programming languages are used to determine the language in which the code i
 This table contains the list of all the models that are available.
 The models are used to determine the model that is used to generate the code.
 
-- &rarr;**`model_id: INTEGER`** Unique identifier for the model, **Primary Key**.
+- **`model_id: INTEGER`** Unique identifier for the model, **Primary Key**.
 - `model_name: TEXT` Name of the model.
 
 ### `query`
 This table contains the list of all the generations that have been requested.
-This table contains only the metadata of the generation request and not the actual code that has been generated.
+This table is the central table in the database and contains all the metadata related to the generation request.
 
 ###### Computed Server-Side
 
 - **`query_id: UUID`** for the generation request, **Primary Key**.
 - `total_serving_time: INTEGER` total request processing time, in milliseconds.
 - `query_timestamp: TIMESTAMP` timestamp at which the query was made.
-- `time_since_last_completion` time since the last completion that was accepted by the user.
+- `telemetry_id: UUID` &rarr; [`telemetry`](#telemetry) ID for the telemetry used.
+- `context_id: UUID` &rarr; [`context`](#context) ID for the context used.
+- `server_version_id: INTEGER` &rarr; [`version_id`](#version_id) ID for the server version used.
 
 
 ###### Computed Client-Side
 
 - `user_id: UUID` &rarr; [`user`](#user) who requested the generation.
-- `prefix_text: TEXT` before the cursor.
-- `suffix_text: TEXT` after the cursor.
-- `trigger_type_id: INTEGER` &rarr; [`trigger_type`](#trigger_type) ID for the trigger type used.
-- `language_id: INTEGER` &rarr; [`programming_language`](#programming_language) ID for the programming language used.
-- `version_id: INTEGER` &rarr; [`version_id`](#version_id) ID for the version of the plugin used.
+- `timestamp: TIMESTAMP` timestamp at which the query was made.
 
-### `generation`
+### `had_generation`
 
 This table contains all the completions that have been generated; the actual code as well as generation-related metadata. 
 
 ###### Computed Server-Side
-- **`request_id: UUID`** &rarr; [`generation`](#generation) Unique identifier for the generation request, **Primary Key**. 
+- **`query_id: UUID`** &rarr; [`query`](#query) Unique identifier for the query, **Primary Key**. 
 - **`model_id: INTEGER`** &rarr; [`model_name`](#model_name) ID for the model used, **Primary Key**.
-- `completion_text: TEXT` The code that has been generated.
+- `completion: TEXT` The code that has been generated.
 - `generation_time: INTEGER` Time taken to generate the code, in milliseconds.
 - `confidence: FLOAT` Confidence of the model in the generated code.
 
@@ -153,6 +167,27 @@ The ground truth is the code that the user was actually looking for when they re
 - **`query_id: UUID`** &rarr; [`query`](#query) Unique identifier for the generation request, **Primary Key**.
 - **`truth_timestamp: TIMESTAMP`** Timestamp at which the ground truth was provided, **Primary Key**.
 - `ground_truth_text: TEXT` The code that the user was actually looking for.
+
+### `context`
+
+This table contains the context for the generation request.
+
+- **`context_id: UUID`** Unique identifier for the context, **Primary Key**.
+- `prefix: TEXT` The code that comes before the cursor position.
+- `suffix: TEXT` The code that comes after the cursor position.
+- `language_id: INTEGER` &rarr; [`programming_language`](#programming_language) ID for the language used.
+- `trigger_type_id: INTEGER` &rarr; [`trigger_type`](#trigger_type) ID for the trigger type used.
+- `version_id: INTEGER` &rarr; [`version_id`](#version_id) ID for the version used.
+
+### `telemetry`
+
+This table contains the telemetry data for the generation request.
+
+- **`telemetry_id: UUID`** Unique identifier for the telemetry data, **Primary Key**.
+- `time_since_last_completion: INTEGER` Time since the last completion, in milliseconds.
+- `typing_speed: INTEGER` Typing speed of the user at the time of the request.
+- `document_char_length: INTEGER` Length of the document.
+- `relative_document_position: DOUBLE` Relative position of the cursor in the document.
 
 ## General Notes
 - The database has been designed in a way to enable modularity and scalability.

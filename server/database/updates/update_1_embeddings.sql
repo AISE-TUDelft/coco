@@ -9,12 +9,22 @@ BEGIN
         WHERE table_name = 'embedding'
     ) THEN
         CREATE TABLE embedding (
-          embedding_id BIGSERIAL PRIMARY KEY,
-          embedding_vector vector NOT NULL  --This is the actual embedding vector -> TODO: change this to a fixed size vector so we can index it
+            embedding_id BIGSERIAL PRIMARY KEY,
+            belong_to uuid token NOT NULL, -- this is the user token / embeddings belonging to everyone (public embeddings) have the token with all Fs FFFF....FF
+            embedding_vector vector NOT NULL  --This is the actual embedding vector -> TODO: change this to a fixed size vector so we can index it
         );
 
         -- add a index on the embedding_id column
         CREATE INDEX embedding_id_index ON embedding (embedding_id);
+
+        -- add a foreign key constraint
+        ALTER TABLE embedding
+            ADD CONSTRAINT fk_to_user FOREIGN KEY (belong_to)
+            REFERENCES "user" (token)
+            ON UPDATE NO ACTION
+            ON DELETE CASCADE -- if the user is deleted, delete all the embeddings associated with it;
+
+
         -- we could also think about adding an index on the embedding_vector column
         -- as the developers mention it would reduce the time-wise complexity of the queries
         -- but it would be a trade of for some recall and precision as the results become approximate

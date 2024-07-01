@@ -10,14 +10,10 @@ CREATE TABLE IF NOT EXISTS public.query
 (
     query_id uuid NOT NULL PRIMARY KEY,
     user_id uuid,
-    prefix text,
-    suffix text,
-    trigger_type_id integer,
-    language_id integer,
-    version_id integer,
+    telemetry_id uuid,
+    context_id uuid,
     total_serving_time integer,
-    time_since_last_completion integer,
-    query_timestamp timestamp with time zone,
+    "timestamp" timestamp with time zone,
     server_version_id integer,
     CONSTRAINT unique_user_query UNIQUE (user_id, query_id)
 );
@@ -68,6 +64,25 @@ CREATE TABLE IF NOT EXISTS public.ground_truth
     PRIMARY KEY (query_id, truth_timestamp)
 );
 
+CREATE TABLE IF NOT EXISTS public.context
+(
+    context_id uuid NOT NULL PRIMARY KEY,
+    prefix text,
+    suffix text,
+    language_id integer,
+    trigger_type_id integer,
+    version_id integer
+);
+
+CREATE TABLE IF NOT EXISTS public.telemetry
+(
+    telemetry_id uuid NOT NULL PRIMARY KEY,
+    time_since_last_completion integer,
+    typing_speed integer,
+    document_char_length integer,
+    relative_document_position double precision
+);
+
 -- Foreign Key Constraints
 ALTER TABLE public.query
     ADD CONSTRAINT user_fk FOREIGN KEY (user_id)
@@ -75,21 +90,15 @@ ALTER TABLE public.query
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
 
-ALTER TABLE public.query
-    ADD CONSTRAINT language_fk FOREIGN KEY (language_id)
-    REFERENCES public.programming_language (language_id)
+ALTER TABLE IF EXISTS public.query
+    ADD CONSTRAINT fk_context FOREIGN KEY (context_id)
+    REFERENCES public.context (context_id)
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
 
 ALTER TABLE public.query
-    ADD CONSTRAINT trigger_type_fk FOREIGN KEY (trigger_type_id)
-    REFERENCES public.trigger_type (trigger_type_id)
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
-
-ALTER TABLE public.query
-    ADD CONSTRAINT version_id_fk FOREIGN KEY (version_id)
-    REFERENCES public.plugin_version (version_id)
+    ADD CONSTRAINT fk_telemetry FOREIGN KEY (telemetry_id)
+    REFERENCES public.telemetry (telemetry_id)
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
 
@@ -111,13 +120,33 @@ ALTER TABLE public.ground_truth
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
 
+ALTER TABLE public.context
+    ADD CONSTRAINT fk_language FOREIGN KEY (language_id)
+    REFERENCES public.programming_language (language_id)
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+ALTER TABLE public.context
+    ADD CONSTRAINT fk_trigger_type FOREIGN KEY (trigger_type_id)
+    REFERENCES public.trigger_type (trigger_type_id)
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+ALTER TABLE public.context
+    ADD CONSTRAINT fk_version FOREIGN KEY (version_id)
+    REFERENCES public.plugin_version (version_id)
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
 -- Indexes on Foreign Keys
 CREATE INDEX idx_query_user_id ON public.query (user_id);
-CREATE INDEX idx_query_language_id ON public.query (language_id);
-CREATE INDEX idx_query_trigger_type_id ON public.query (trigger_type_id);
-CREATE INDEX idx_query_version_id ON public.query (version_id);
+CREATE INDEX idx_query_language_id ON public.context (language_id);
+CREATE INDEX idx_query_trigger_type_id ON public.context (trigger_type_id);
+CREATE INDEX idx_query_version_id ON public.context (version_id);
 
 -- Indexes on Primary Keys
+CREATE INDEX telemetry_id_index ON public.telemetry (telemetry_id);
+
 -- low cost index for foreign key lookups
 CREATE INDEX idx_model_id ON public.model_name (model_id);
 CREATE INDEX idx_version_id ON public.plugin_version (version_id);
