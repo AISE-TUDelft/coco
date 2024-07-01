@@ -1,5 +1,5 @@
 
-from langchain_community import VLLM 
+from langchain_community.llms.vllm import VLLM
 from langchain_core.prompts import PromptTemplate
 
 # TODO: StarCoder2 supports repo-level FIM 

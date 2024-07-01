@@ -11,14 +11,28 @@
 
 With Python `3.11` ([requirement in `vllm`](https://docs.vllm.ai/en/stable/getting_started/installation.html)), install via 
 
-```py
+```bash
 pip install -r requirements.txt
+```
+## Requirements for RAG (patch 1)
+
+As this patch introduces the capability to have prompts be enhanced through RAG (Retrieval-Augmented Generation),
+you will need to install the `pgvector` extension for postgres.
+
+*A thorough explanation of the installation process can be found [here](https://github.com/pgvector/pgvector)*
+##### Installation (Linux & Mac)
+```bash
+cd /tmp
+git clone --branch v0.7.2 https://github.com/pgvector/pgvector.git
+cd pgvector
+make
+make install # may need sudo
 ```
 
 #### Running
 To run the server, use 
 
-```py
+```bash
 # TODO: update this to pass in the correct survey_link and db_url
 fastapi dev main.py
 ```
