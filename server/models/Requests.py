@@ -1,8 +1,7 @@
 from pydantic import BaseModel
-from datetime import datetime
 from typing import Union
 
-from database.models.Types import TriggerType, LanguageType, IDEType
+from models.Types import TriggerType, LanguageType, IDEType
 
 class GenerateRequest(BaseModel):
     """
