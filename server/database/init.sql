@@ -14,19 +14,19 @@ CREATE TABLE IF NOT EXISTS public.query
     context_id uuid,
     total_serving_time integer,
     "timestamp" timestamp with time zone,
-    server_version_id integer,
+    server_version_id BIGINT,
     CONSTRAINT unique_user_query UNIQUE (user_id, query_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.model_name
 (
-    model_id integer NOT NULL PRIMARY KEY,
+    model_id SERIAL PRIMARY KEY,
     model_name text NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.plugin_version
 (
-    version_id integer NOT NULL PRIMARY KEY,
+    version_id SERIAL PRIMARY KEY,
     version_name text NOT NULL,
     ide_type text NOT NULL,
     description text
@@ -34,20 +34,20 @@ CREATE TABLE IF NOT EXISTS public.plugin_version
 
 CREATE TABLE IF NOT EXISTS public.trigger_type
 (
-    trigger_type_id integer NOT NULL PRIMARY KEY,
+    trigger_type_id SERIAL PRIMARY KEY,
     trigger_type_name text NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.programming_language
 (
-    language_id integer NOT NULL PRIMARY KEY,
+    language_id SERIAL PRIMARY KEY,
     language_name text NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.had_generation
 (
     query_id uuid NOT NULL,
-    model_id integer NOT NULL,
+    model_id BIGINT NOT NULL,
     completion text NOT NULL,
     generation_time integer NOT NULL,
     shown_at timestamp with time zone[] NOT NULL,
@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS public.context
     context_id uuid NOT NULL PRIMARY KEY,
     prefix text,
     suffix text,
-    language_id integer,
-    trigger_type_id integer,
-    version_id integer
+    language_id BIGINT,
+    trigger_type_id BIGINT,
+    version_id BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS public.telemetry
@@ -160,5 +160,37 @@ CREATE INDEX idx_user_token ON public."user" (token);
 -- Indexes that will speed up analysis
 CREATE INDEX idx_query_id_model_id ON public.had_generation (query_id, model_id);
 CREATE INDEX idx_query_id_truth_timestamp ON public.ground_truth (query_id, truth_timestamp);
+
+-- now that we have everything set up, we can add some default values
+
+INSERT INTO public.model_name (model_name) VALUES ('deepseek_base'), ('deepseek_instruct'), ('starcoder2');
+INSERT INTO public.programming_language (language_name) VALUES ('plaintext'), ('code-text-binary'), ('Log'),
+                                                               ('log'), ('scminput'), ('bat'), ('clojure'),
+                                                               ('coffeescript'), ('jsonc'), ('json'), ('c'), ('cpp'),
+                                                               ('cuda-cpp'), ('csharp'), ('css'), ('dart'), ('diff'),
+                                                               ('dockerfile'), ('ignore'), ('fsharp'), ('git-commit'),
+                                                               ('git-rebase'), ('go'), ('groovy'), ('handlebars'),
+                                                               ('hlsl'), ('html'), ('ini'), ('properties'), ('java'),
+                                                               ('javascriptreact'), ('javascript'), ('jsx-tags'),
+                                                               ('jsonl'), ('snippets'), ('julia'), ('juliamarkdown'),
+                                                               ('tex'), ('latex'), ('bibtex'), ('cpp_embedded_latex'),
+                                                               ('markdown_latex_combined'), ('less'), ('lua'),
+                                                               ('makefile'), ('markdown'), ('markdown-math'), ('wat'),
+                                                               ('objective-c'), ('objective-cpp'), ('perl'), ('raku'),
+                                                               ('php'), ('powershell'), ('jade'), ('python'), ('r'),
+                                                               ('razor'), ('restructuredtext'), ('ruby'), ('rust'),
+                                                               ('scss'), ('search-result'), ('shaderlab'),
+                                                               ('shellscript'), ('sql'), ('swift'), ('typescript'),
+                                                               ('typescriptreact'), ('vb'), ('xml'), ('xsl'),
+                                                               ('dockercompose'), ('yaml'), ('doctex'),
+                                                               ('bibtex-style'), ('latex-expl3'), ('pweave'),
+                                                               ('jlweave'), ('rsweave'), ('csv'), ('tsv'), ('jinja'),
+                                                               ('pip-requirements'), ('toml'), ('raw'), ('ssh_config'),
+                                                               ('Vimscript');
+INSERT INTO public.trigger_type (trigger_type_name) VALUES ('manual'), ('automatic'), ('idle');
+-- we can later add the actual plugin versions
+INSERT INTO public.plugin_version (version_name, ide_type, description) VALUES ('0.0.1', 'JetBrains', 'the mvp version of the plugin'),
+                                                                               ('0.0.1', 'VSCode', 'the mvp version of the plugin');
+
 
 COMMIT;

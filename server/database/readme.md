@@ -16,34 +16,34 @@ erDiagram
         uuid context_id
         int total_serving_time
         timestamp timestamp
-        int server_version_id
+        serial server_version_id
     }
     
     MODEL_NAME {
-        int model_id PK
+        serial model_id PK
         text model_name
     }
     
     PLUGIN_VERSION {
-        int version_id PK
+        serial version_id PK
         text version_name
         text ide_type
         text description
     }
     
     TRIGGER_TYPE {
-        int trigger_type_id PK
+        serial trigger_type_id PK
         text trigger_type_name
     }
     
     PROGRAMMING_LANGUAGE {
-        int language_id PK
+        serial language_id PK
         text language_name
     }
     
     HAD_GENERATION {
         uuid query_id PK
-        int model_id PK
+        bigint_unsigned model_id PK
         text completion
         int generation_time
         timestamp[] shown_at
@@ -61,9 +61,9 @@ erDiagram
         uuid context_id PK
         text prefix
         text suffix
-        int language_id
-        int trigger_type_id
-        int version_id
+        bigint_unsigned language_id
+        bigint_unsigned trigger_type_id
+        bigint_unsigned version_id
     }
     
     TELEMETRY {
@@ -99,7 +99,7 @@ This table can therefore also be used to verify the fact that a user is a valid 
 This table contains the list of all the versions of the plugin that are available bound to the `ide_type`.
 The (optional) description field can be used to provide a brief description of the version and the changes that have been made in the version.
 
-- **`version_id: INTEGER`** Unique identifier for the version. **Primary Key**.
+- **`version_id: SERIAL`** Unique identifier for the version. **Primary Key**.
 - `version_name: TEXT` Name of the (semantic) version.
 - `ide_type: TEXT` Type of the IDE for which the version is available.
 - `description: TEXT` Description of the version, *Optional*.
@@ -108,21 +108,21 @@ The (optional) description field can be used to provide a brief description of t
 This table contains the list of all the trigger types that are available.
 The trigger types are used to determine the type of trigger that is used to generate the code.
 
-- **`trigger_type_id: INTEGER`** Unique identifier for the trigger type, **Primary Key**.
+- **`trigger_type_id: SERIAL`** Unique identifier for the trigger type, **Primary Key**.
 - `trigger_type_name: TEXT` Name of the trigger type.
 
 ### `programming_language`
 This table contains the list of all the programming languages that are available.
 The programming languages are used to determine the language in which the code is generated.
 
-- **`language_id: INTEGER`** Unique identifier for the programming language, **Primary Key**.
+- **`language_id: SERIAL`** Unique identifier for the programming language, **Primary Key**.
 - `language_name: TEXT` Name of the programming language.
 
 ### `model_name`
 This table contains the list of all the models that are available.
 The models are used to determine the model that is used to generate the code.
 
-- **`model_id: INTEGER`** Unique identifier for the model, **Primary Key**.
+- **`model_id: SERIAL`** Unique identifier for the model, **Primary Key**.
 - `model_name: TEXT` Name of the model.
 
 ### `query`
@@ -136,7 +136,7 @@ This table is the central table in the database and contains all the metadata re
 - `query_timestamp: TIMESTAMP` timestamp at which the query was made.
 - `telemetry_id: UUID` &rarr; [`telemetry`](#telemetry) ID for the telemetry used.
 - `context_id: UUID` &rarr; [`context`](#context) ID for the context used.
-- `server_version_id: INTEGER` &rarr; [`version_id`](#version_id) ID for the server version used.
+- `server_version_id: BIGINT` &rarr; [`version_id`](#version_id) ID for the server version used.
 
 
 ###### Computed Client-Side
@@ -150,7 +150,7 @@ This table contains all the completions that have been generated; the actual cod
 
 ###### Computed Server-Side
 - **`query_id: UUID`** &rarr; [`query`](#query) Unique identifier for the query, **Primary Key**. 
-- **`model_id: INTEGER`** &rarr; [`model_name`](#model_name) ID for the model used, **Primary Key**.
+- **`model_id: BIGINT`** &rarr; [`model_name`](#model_name) ID for the model used, **Primary Key**.
 - `completion: TEXT` The code that has been generated.
 - `generation_time: INTEGER` Time taken to generate the code, in milliseconds.
 - `confidence: FLOAT` Confidence of the model in the generated code.
@@ -175,9 +175,9 @@ This table contains the context for the generation request.
 - **`context_id: UUID`** Unique identifier for the context, **Primary Key**.
 - `prefix: TEXT` The code that comes before the cursor position.
 - `suffix: TEXT` The code that comes after the cursor position.
-- `language_id: INTEGER` &rarr; [`programming_language`](#programming_language) ID for the language used.
-- `trigger_type_id: INTEGER` &rarr; [`trigger_type`](#trigger_type) ID for the trigger type used.
-- `version_id: INTEGER` &rarr; [`version_id`](#version_id) ID for the version used.
+- `language_id: BIGINT` &rarr; [`programming_language`](#programming_language) ID for the language used.
+- `trigger_type_id: BIGINT` &rarr; [`trigger_type`](#trigger_type) ID for the trigger type used.
+- `version_id: BIGINT` &rarr; [`version_id`](#version_id) ID for the version used.
 
 ### `telemetry`
 
