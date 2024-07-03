@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-from database.models.Requests import GenerateRequest
+from models.Requests import GenerateRequest
 
 
 class Query(BaseModel):
