@@ -31,7 +31,7 @@ To best leverage FIM, we should use a Base model (as opposed to Instruct).
 '''
 
 from langchain.chains.llm import LLMChain
-from langchain_community.llms.vllm import VLLM 
+from vllm_modified import VLLM 
 from langchain_core.prompts import PromptTemplate
 
 '''
@@ -74,7 +74,7 @@ llm = VLLM(
     presence_penalty=1.0    # penalise new tokens based on their frequency in the generated text so far
 )
 
-llm_chain = LLMChain(prompt=prompt, llm=llm)
+llm_chain = prompt | llm 
 
 # TODO: refactor to a test suite
 pre, suf = '''
@@ -108,7 +108,6 @@ if __name__ == '__main__':
 
     question_2 = llm_chain.invoke(input=dict(prefix=pre, suffix=suf))
 
+    import pdb; pdb.set_trace()
     print_fim(question_1)
     print_fim(question_2)
-
-    import pdb; pdb.set_trace()
