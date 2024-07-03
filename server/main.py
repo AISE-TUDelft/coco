@@ -4,12 +4,13 @@ from starlette.responses import FileResponse
 from api.api import router as v3_router
 
 app = FastAPI(
-    title       = 'CoCo API',
-    description = 'RESTful API that provides code completion services to the CoCo IDE plugin.',
-    version     = '0.0.1',
+    title='CoCo API',
+    description='RESTful API that provides code completion services to the CoCo IDE plugin.',
+    version='0.0.1',
 )
 
 app.include_router(v3_router, prefix='/api/v3')
+
 
 @app.get('/')
 @app.get('/index.html')

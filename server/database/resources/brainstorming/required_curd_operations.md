@@ -56,3 +56,36 @@
 - `get_all_trigger_types() -> List[TriggerType]`
 - `get_trigger_type(trigger_type_id: int) -> TriggerType`
 - `get_trigger_type_by_name(trigger_type_name: str) -> TriggerType`
+
+## Create
+### Single Table
+#### User
+- `create_user(user: User) -> User`
+- `create_user_with_token(token: str) -> User`
+
+#### query
+- `create_query(query: Query) -> Query`
+
+#### programming_language
+- `add_programming_language(language: ProgrammingLanguage) -> ProgrammingLanguage`
+
+#### model_name
+- `add_model_name(model: ModelName) -> ModelName`
+
+#### plugin_version
+- `add_plugin_version(version: PluginVersion) -> PluginVersion`
+
+#### trigger_type
+- `add_trigger_type(trigger_type: TriggerType) -> TriggerType`
+
+#### context
+- `add_context(context: Context) -> Context`
+
+#### ground_truth
+- `add_ground_truth(ground_truth: GroundTruth) -> GroundTruth`
+
+#### telemetry
+- `add_telemetry(telemetry: Telemetry) -> Telemetry`
+
+#### had_generation
+- `add_had_generation(generation: HadGeneration) -> HadGeneration`

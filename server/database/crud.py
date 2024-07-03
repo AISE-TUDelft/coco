@@ -3,8 +3,9 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from . import models, schemas
-from .models import User, Query
+from database import db_models, db_schemas
+from database.db_models import *
+from database.db_schemas import *
 
 
 # helper functions
@@ -12,252 +13,337 @@ def is_valid_uuid(uuid: str) -> bool:
     return len(uuid) == 36
 
 
-# READ operations
+# READ operation
 # User Table
 def get_all_users(db: Session) -> list[Type[User]]:
-    return db.query(models.User).all()
+    return db.query(db_models.User).all()
 
 
-def get_user_by_token(db: Session, token: str) -> models.User:
+def get_user_by_token(db: Session, token: str) -> db_models.User:
     assert is_valid_uuid(token)
-    return db.query(models.User).filter(models.User.token == token).first()
+    return db.query(db_models.User).filter(db_models.User.token == token).first()
 
 
 # Query Table
-def get_all_queries(db: Session) -> list[models.Query]:
-    return db.query(models.Query).all()
+def get_all_queries(db: Session) -> list[db_models.Query]:
+    return db.query(db_models.Query).all()
 
 
-def get_query_by_id(db: Session, query_id: str) -> models.Query:
+def get_query_by_id(db: Session, query_id: str) -> db_models.Query:
     assert is_valid_uuid(query_id)
-    return db.query(models.Query).filter(models.Query.query_id == query_id).first()
+    return db.query(db_models.Query).filter(db_models.Query.query_id == query_id).first()
 
 
-def get_user_queries(db: Session, user_id: str) -> list[models.Query]:
+def get_user_queries(db: Session, user_id: str) -> list[db_models.Query]:
     assert is_valid_uuid(user_id)
-    return db.query(models.Query).filter(models.Query.user_id == user_id).all()
+    return db.query(db_models.Query).filter(db_models.Query.user_id == user_id).all()
 
 
 def get_queries_in_time_range(db: Session, start_time: str = None, end_time: str = None) -> list[Type[Query]]:
     if start_time and end_time:
-        return db.query(models.Query).filter(models.Query.timestamp >= start_time,
-                                             models.Query.timestamp <= end_time).all()
+        return db.query(db_models.Query).filter(db_models.Query.timestamp >= start_time,
+                                                db_models.Query.timestamp <= end_time).all()
     elif start_time:
-        return db.query(models.Query).filter(models.Query.timestamp >= start_time).all()
+        return db.query(db_models.Query).filter(db_models.Query.timestamp >= start_time).all()
     elif end_time:
-        return db.query(models.Query).filter(models.Query.timestamp <= end_time).all()
-    return db.query(models.Query).all()
+        return db.query(db_models.Query).filter(db_models.Query.timestamp <= end_time).all()
+    return db.query(db_models.Query).all()
 
 
 def get_queries_bound_by_context(db: Session, context_id: str) -> list[Type[Query]]:
     assert is_valid_uuid(context_id)
-    return db.query(models.Query).filter(models.Query.context_id == context_id).all()
+    return db.query(db_models.Query).filter(db_models.Query.context_id == context_id).all()
 
 
-def get_query_by_telemetry_id(db: Session, telemetry_id: str) -> models.Query:
+def get_query_by_telemetry_id(db: Session, telemetry_id: str) -> db_models.Query:
     assert is_valid_uuid(telemetry_id)
-    return db.query(models.Query).filter(models.Query.telemetry_id == telemetry_id).first()
+    return db.query(db_models.Query).filter(db_models.Query.telemetry_id == telemetry_id).first()
 
 
 # programming_language Table
-def get_all_programming_languages(db: Session) -> list[Type[models.ProgrammingLanguage]]:
-    return db.query(models.ProgrammingLanguage).all()
+def get_all_programming_languages(db: Session) -> list[Type[db_models.ProgrammingLanguage]]:
+    return db.query(db_models.ProgrammingLanguage).all()
 
 
-def get_programming_language_by_id(db: Session, language_id: int) -> models.ProgrammingLanguage:
-    return db.query(models.ProgrammingLanguage).filter(models.ProgrammingLanguage.language_id == language_id).first()
+def get_programming_language_by_id(db: Session, language_id: int) -> db_models.ProgrammingLanguage:
+    return db.query(db_models.ProgrammingLanguage).filter(
+        db_models.ProgrammingLanguage.language_id == language_id).first()
 
 
-def get_programming_language_by_name(db: Session, language_name: str) -> models.ProgrammingLanguage:
-    return db.query(models.ProgrammingLanguage).filter(
-        models.ProgrammingLanguage.language_name == language_name).first()
+def get_programming_language_by_name(db: Session, language_name: str) -> db_models.ProgrammingLanguage:
+    return db.query(db_models.ProgrammingLanguage).filter(
+        db_models.ProgrammingLanguage.language_name == language_name).first()
 
 
 # had_generation Table
-def get_all_generations(db: Session) -> list[Type[models.HadGeneration]]:
-    return db.query(models.HadGeneration).all()
+def get_all_generations(db: Session) -> list[Type[db_models.HadGeneration]]:
+    return db.query(db_models.HadGeneration).all()
 
 
-def get_generations_by_query_id(db: Session, query_id: str) -> list[Type[models.HadGeneration]]:
+def get_generations_by_query_id(db: Session, query_id: str) -> list[Type[db_models.HadGeneration]]:
     assert is_valid_uuid(query_id)
-    return db.query(models.HadGeneration).filter(models.HadGeneration.query_id == query_id).all()
+    return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.query_id == query_id).all()
 
 
 def get_generations_by_query_and_model_id(db: Session, query_id: str,
-                                          model_id: int) -> list[Type[models.HadGeneration]]:
+                                          model_id: int) -> list[Type[db_models.HadGeneration]]:
     assert is_valid_uuid(query_id)
-    return db.query(models.HadGeneration).filter(models.HadGeneration.query_id == query_id,
-                                                 models.HadGeneration.model_id == model_id).all()
+    return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.query_id == query_id,
+                                                    db_models.HadGeneration.model_id == model_id).all()
 
 
 def get_generations_having_confidence_in_range(db: Session, lower_bound: float = None,
-                                               upper_bound: float = None) -> list[Type[models.HadGeneration]]:
+                                               upper_bound: float = None) -> list[Type[db_models.HadGeneration]]:
     if lower_bound and upper_bound:
-        return db.query(models.HadGeneration).filter(models.HadGeneration.confidence >= lower_bound,
-                                                     models.HadGeneration.confidence <= upper_bound).all()
+        return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.confidence >= lower_bound,
+                                                        db_models.HadGeneration.confidence <= upper_bound).all()
     elif lower_bound:
-        return db.query(models.HadGeneration).filter(models.HadGeneration.confidence >= lower_bound).all()
+        return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.confidence >= lower_bound).all()
     elif upper_bound:
-        return db.query(models.HadGeneration).filter(models.HadGeneration.confidence <= upper_bound).all()
+        return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.confidence <= upper_bound).all()
 
     return get_all_generations(db)
 
 
-def get_generations_having_acceptance_of(db: Session, acceptance: bool) -> list[Type[models.HadGeneration]]:
-    return db.query(models.HadGeneration).filter(models.HadGeneration.was_accepted == acceptance).all()
+def get_generations_having_acceptance_of(db: Session, acceptance: bool) -> list[Type[db_models.HadGeneration]]:
+    return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.was_accepted == acceptance).all()
 
 
 def get_generations_with_shown_times_in_range(db: Session, lower_bound: int = None,
-                                              upper_bound: int = None) -> list[Type[models.HadGeneration]]:
+                                              upper_bound: int = None) -> list[Type[db_models.HadGeneration]]:
     if lower_bound and upper_bound:
-        return (db.query(models.HadGeneration)
-                .filter(func.cardinality(models.HadGeneration.shown_at) >= lower_bound,
-                        func.cardinality(models.HadGeneration.shown_at) <= upper_bound).all())
+        return (db.query(db_models.HadGeneration)
+                .filter(func.cardinality(db_models.HadGeneration.shown_at) >= lower_bound,
+                        func.cardinality(db_models.HadGeneration.shown_at) <= upper_bound).all())
 
     elif lower_bound:
-        return (db.query(models.HadGeneration)
-                .filter(func.cardinality(models.HadGeneration.shown_at) >= lower_bound).all())
+        return (db.query(db_models.HadGeneration)
+                .filter(func.cardinality(db_models.HadGeneration.shown_at) >= lower_bound).all())
 
     elif upper_bound:
-        return (db.query(models.HadGeneration)
-                .filter(func.cardinality(models.HadGeneration.shown_at) <= upper_bound).all())
+        return (db.query(db_models.HadGeneration)
+                .filter(func.cardinality(db_models.HadGeneration.shown_at) <= upper_bound).all())
 
     return get_all_generations(db)
 
 
 # model_name Table
-def get_all_models(db: Session) -> list[Type[models.ModelName]]:
-    return db.query(models.ModelName).all()
+def get_all_db_models(db: Session) -> list[Type[db_models.ModelName]]:
+    return db.query(db_models.ModelName).all()
 
 
-def get_model_by_id(db: Session, model_id: int) -> models.ModelName:
-    return db.query(models.ModelName).filter(models.ModelName.model_id == model_id).first()
+def get_model_by_id(db: Session, model_id: int) -> db_models.ModelName:
+    return db.query(db_models.ModelName).filter(db_models.ModelName.model_id == model_id).first()
 
 
-def get_model_by_name(db: Session, model_name: str) -> models.ModelName:
-    return db.query(models.ModelName).filter(models.ModelName.model_name == model_name).first()
+def get_model_by_name(db: Session, model_name: str) -> db_models.ModelName:
+    return db.query(db_models.ModelName).filter(db_models.ModelName.model_name == model_name).first()
 
 
 # ground_truth Table
-def get_all_ground_truths(db: Session) -> list[Type[models.GroundTruth]]:
-    return db.query(models.GroundTruth).all()
+def get_all_ground_truths(db: Session) -> list[Type[db_models.GroundTruth]]:
+    return db.query(db_models.GroundTruth).all()
 
 
-def get_ground_truths_for(db: Session, query_id: str) -> list[Type[models.GroundTruth]]:
+def get_ground_truths_for(db: Session, query_id: str) -> list[Type[db_models.GroundTruth]]:
     assert is_valid_uuid(query_id)
-    return db.query(models.GroundTruth).filter(models.GroundTruth.query_id == query_id).all()
+    return db.query(db_models.GroundTruth).filter(db_models.GroundTruth.query_id == query_id).all()
 
 
 def get_ground_truths_for_query_in_time_range(db: Session, query_id: str, start_time: str = None,
-                                              end_time: str = None) -> list[Type[models.GroundTruth]]:
+                                              end_time: str = None) -> list[Type[db_models.GroundTruth]]:
     assert is_valid_uuid(query_id)
     if start_time and end_time:
-        return db.query(models.GroundTruth).filter(models.GroundTruth.query_id == query_id,
-                                                   models.GroundTruth.truth_timestamp >= start_time,
-                                                   models.GroundTruth.truth_timestamp <= end_time).all()
+        return db.query(db_models.GroundTruth).filter(db_models.GroundTruth.query_id == query_id,
+                                                      db_models.GroundTruth.truth_timestamp >= start_time,
+                                                      db_models.GroundTruth.truth_timestamp <= end_time).all()
     elif start_time:
-        return db.query(models.GroundTruth).filter(models.GroundTruth.query_id == query_id,
-                                                   models.GroundTruth.truth_timestamp >= start_time).all()
+        return db.query(db_models.GroundTruth).filter(db_models.GroundTruth.query_id == query_id,
+                                                      db_models.GroundTruth.truth_timestamp >= start_time).all()
     elif end_time:
-        return db.query(models.GroundTruth).filter(models.GroundTruth.query_id == query_id,
-                                                   models.GroundTruth.truth_timestamp <= end_time).all()
+        return db.query(db_models.GroundTruth).filter(db_models.GroundTruth.query_id == query_id,
+                                                      db_models.GroundTruth.truth_timestamp <= end_time).all()
 
     return get_ground_truths_for(db, query_id)
 
 
 # telemetry table
-def get_all_telemetries(db: Session) -> list[Type[models.Telemetry]]:
-    return db.query(models.Telemetry).all()
+def get_all_telemetries(db: Session) -> list[Type[db_models.Telemetry]]:
+    return db.query(db_models.Telemetry).all()
 
 
 def get_telemetries_with_time_since_last_completion_in_range(db: Session, lower_bound: int = None,
-                                                             upper_bound: int = None) -> list[Type[models.Telemetry]]:
+                                                             upper_bound: int = None) -> list[
+    Type[db_models.Telemetry]]:
     if lower_bound and upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.time_since_last_completion >= lower_bound,
-                                                 models.Telemetry.time_since_last_completion <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.time_since_last_completion >= lower_bound,
+                                                    db_models.Telemetry.time_since_last_completion <= upper_bound).all()
     elif lower_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.time_since_last_completion >= lower_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.time_since_last_completion >= lower_bound).all()
     elif upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.time_since_last_completion <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.time_since_last_completion <= upper_bound).all()
 
     return get_all_telemetries(db)
 
 
-def get_telemetry_by_id(db: Session, telemetry_id: str) -> models.Telemetry:
+def get_telemetry_by_id(db: Session, telemetry_id: str) -> db_models.Telemetry:
     assert is_valid_uuid(telemetry_id)
-    return db.query(models.Telemetry).filter(models.Telemetry.telemetry_id == telemetry_id).first()
+    return db.query(db_models.Telemetry).filter(db_models.Telemetry.telemetry_id == telemetry_id).first()
 
 
 def get_telemetries_with_typing_speed_in_range(db: Session, lower_bound: int = None,
-                                               upper_bound: int = None) -> list[Type[models.Telemetry]]:
+                                               upper_bound: int = None) -> list[Type[db_models.Telemetry]]:
     if lower_bound and upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.typing_speed >= lower_bound,
-                                                 models.Telemetry.typing_speed <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.typing_speed >= lower_bound,
+                                                    db_models.Telemetry.typing_speed <= upper_bound).all()
     elif lower_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.typing_speed >= lower_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.typing_speed >= lower_bound).all()
     elif upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.typing_speed <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.typing_speed <= upper_bound).all()
 
     return get_all_telemetries(db)
 
 
 def get_telemetries_with_document_char_length_in_range(db: Session, lower_bound: int = None,
-                                                       upper_bound: int = None) -> list[Type[models.Telemetry]]:
+                                                       upper_bound: int = None) -> list[Type[db_models.Telemetry]]:
     if lower_bound and upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.document_char_length >= lower_bound,
-                                                 models.Telemetry.document_char_length <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.document_char_length >= lower_bound,
+                                                    db_models.Telemetry.document_char_length <= upper_bound).all()
     elif lower_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.document_char_length >= lower_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.document_char_length >= lower_bound).all()
     elif upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.document_char_length <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.document_char_length <= upper_bound).all()
 
     return get_all_telemetries(db)
 
 
 def get_telemetries_with_relative_document_position_in_range(db: Session, lower_bound: float = None,
-                                                             upper_bound: float = None) -> list[Type[models.Telemetry]]:
+                                                             upper_bound: float = None) -> list[
+    Type[db_models.Telemetry]]:
     if lower_bound and upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.relative_document_position >= lower_bound,
-                                                 models.Telemetry.relative_document_position <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.relative_document_position >= lower_bound,
+                                                    db_models.Telemetry.relative_document_position <= upper_bound).all()
     elif lower_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.relative_document_position >= lower_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.relative_document_position >= lower_bound).all()
     elif upper_bound:
-        return db.query(models.Telemetry).filter(models.Telemetry.relative_document_position <= upper_bound).all()
+        return db.query(db_models.Telemetry).filter(db_models.Telemetry.relative_document_position <= upper_bound).all()
 
     return get_all_telemetries(db)
 
 
 # context Table
-def get_all_contexts(db: Session) -> list[Type[models.Context]]:
-    return db.query(models.Context).all()
+def get_all_contexts(db: Session) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).all()
 
 
-def get_context_by_id(db: Session, context_id: str) -> models.Context:
+def get_context_by_id(db: Session, context_id: str) -> db_models.Context:
     assert is_valid_uuid(context_id)
-    return db.query(models.Context).filter(models.Context.context_id == context_id).first()
+    return db.query(db_models.Context).filter(db_models.Context.context_id == context_id).first()
 
 
-def get_contexts_where_language_is(db: Session, language_id: int) -> list[Type[models.Context]]:
-    return db.query(models.Context).filter(models.Context.language_id == language_id).all()
+def get_contexts_where_language_is(db: Session, language_id: int) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.language_id == language_id).all()
 
 
-def get_contexts_where_trigger_type_is(db: Session, trigger_type_id: int) -> list[Type[models.Context]]:
-    return db.query(models.Context).filter(models.Context.trigger_type_id == trigger_type_id).all()
+def get_contexts_where_trigger_type_is(db: Session, trigger_type_id: int) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.trigger_type_id == trigger_type_id).all()
 
 
-def get_contexts_where_version_is(db: Session, version_id: int) -> list[Type[models.Context]]:
-    return db.query(models.Context).filter(models.Context.version_id == version_id).all()
+def get_contexts_where_version_is(db: Session, version_id: int) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.version_id == version_id).all()
 
 
 # trigger_type Table
-def get_all_trigger_types(db: Session) -> list[Type[models.TriggerType]]:
-    return db.query(models.TriggerType).all()
+def get_all_trigger_types(db: Session) -> list[Type[db_models.TriggerType]]:
+    return db.query(db_models.TriggerType).all()
 
 
-def get_trigger_type_by_id(db: Session, trigger_type_id: int) -> models.TriggerType:
-    return db.query(models.TriggerType).filter(models.TriggerType.trigger_type_id == trigger_type_id).first()
+def get_trigger_type_by_id(db: Session, trigger_type_id: int) -> db_models.TriggerType:
+    return db.query(db_models.TriggerType).filter(db_models.TriggerType.trigger_type_id == trigger_type_id).first()
 
 
-def get_trigger_type_by_name(db: Session, trigger_type_name: str) -> models.TriggerType:
-    return db.query(models.TriggerType).filter(models.TriggerType.trigger_type_name == trigger_type_name).first()
+def get_trigger_type_by_name(db: Session, trigger_type_name: str) -> db_models.TriggerType:
+    return db.query(db_models.TriggerType).filter(db_models.TriggerType.trigger_type_name == trigger_type_name).first()
 
+
+# CREATE operations
+# Simple CREATE operations with complete data -> nothing has to be checked or generated/calculated before creating
+def create_user(db: Session, user: db_schemas.UserCreate) -> db_models.User:
+    db_user = db_models.User(**user.model_dump())
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def add_programming_language(db: Session,
+                             language: db_schemas.ProgrammingLanguageCreate) -> db_models.ProgrammingLanguage:
+    db_language = db_models.ProgrammingLanguage(**language.model_dump())
+    db.add(db_language)
+    db.commit()
+    db.refresh(db_language)
+    return db_language
+
+
+def add_model(db: Session, model: db_schemas.ModelNameCreate) -> db_models.ModelName:
+    db_model = db_models.ModelName(**model.model_dump())
+    db.add(db_model)
+    db.commit()
+    db.refresh(db_model)
+    return db_model
+
+
+def add_trigger_type(db: Session, trigger_type: db_schemas.TriggerTypeCreate) -> db_models.TriggerType:
+    db_trigger_type = db_models.TriggerType(**trigger_type.model_dump())
+    db.add(db_trigger_type)
+    db.commit()
+    db.refresh(db_trigger_type)
+    return db_trigger_type
+
+
+def add_plugin_version(db: Session, version: db_schemas.PluginVersionCreate) -> db_models.PluginVersion:
+    db_version = db_models.PluginVersion(**version.model_dump())
+    db.add(db_version)
+    db.commit()
+    db.refresh(db_version)
+    return db_version
+
+
+def add_context(db: Session, context: db_schemas.ContextCreate) -> db_models.Context:
+    db_context = db_models.Context(**context.model_dump())
+    db.add(db_context)
+    db.commit()
+    db.refresh(db_context)
+    return db_context
+
+
+def add_query(db: Session, query: db_schemas.QueryCreate) -> db_models.Query:
+    db_query = db_models.Query(**query.model_dump())
+    db.add(db_query)
+    db.commit()
+    db.refresh(db_query)
+    return db_query
+
+
+def add_telemetry(db: Session, telemetry: db_schemas.TelemetryCreate) -> db_models.Telemetry:
+    db_telemetry = db_models.Telemetry(**telemetry.model_dump())
+    db.add(db_telemetry)
+    db.commit()
+    db.refresh(db_telemetry)
+    return db_telemetry
+
+
+def add_ground_truth(db: Session, ground_truth: db_schemas.GroundTruthCreate) -> db_models.GroundTruth:
+    db_ground_truth = db_models.GroundTruth(**ground_truth.model_dump())
+    db.add(db_ground_truth)
+    db.commit()
+    db.refresh(db_ground_truth)
+    return db_ground_truth
+
+
+def add_generation(db: Session, generation: db_schemas.HadGenerationCreate) -> db_models.HadGeneration:
+    db_generation = db_models.HadGeneration(**generation.model_dump())
+    db.add(db_generation)
+    db.commit()
+    db.refresh(db_generation)
+    return db_generation

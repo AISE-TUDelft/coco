@@ -6,7 +6,7 @@ from models.Responses import GenerateResponse, VerifyResponse, SurveyResponse
 from models.CoCoConfig import CoCoConfig
 
 router = APIRouter()
-config = CoCoConfig(survey_link='survey.link', database_url='database.url')
+config = CoCoConfig(survey_link='survey.link', database_url='database.url', test_database_url='test.database.url')
 
 
 # TODO: Try streaming to reduce latency

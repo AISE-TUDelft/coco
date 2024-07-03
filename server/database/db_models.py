@@ -1,7 +1,7 @@
 from database.database import Base
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, ForeignKey, DateTime,
-    Float, create_engine, UniqueConstraint, Index, ARRAY
+    Float, create_engine, UniqueConstraint, Index, ARRAY, BIGINT, Sequence
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -9,6 +9,8 @@ from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = 'user'
+    __table_args__ = {'extend_existing': True}  # This line allows extending the existing table # TODO: check if this
+    # is necessary
     token = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     joined_at = Column(DateTime(timezone=True), nullable=False)
 
@@ -40,7 +42,7 @@ class Query(Base):
 
 class ModelName(Base):
     __tablename__ = 'model_name'
-    model_id = Column(Integer, primary_key=True, nullable=False)
+    model_id = Column(Sequence("model_name_seq", start=1), primary_key=True, nullable=False)
     model_name = Column(Text, nullable=False)
 
     had_generations = relationship('HadGeneration', back_populates='model')
@@ -48,7 +50,7 @@ class ModelName(Base):
 
 class PluginVersion(Base):
     __tablename__ = 'plugin_version'
-    version_id = Column(Integer, primary_key=True, nullable=False)
+    version_id = Column(Sequence("plugin_version_seq", start=1), primary_key=True, nullable=False)
     version_name = Column(Text, nullable=False)
     ide_type = Column(Text, nullable=False)
     description = Column(Text)
@@ -58,7 +60,7 @@ class PluginVersion(Base):
 
 class TriggerType(Base):
     __tablename__ = 'trigger_type'
-    trigger_type_id = Column(Integer, primary_key=True, nullable=False)
+    trigger_type_id = Column(Sequence("trigger_type_seq", start=1), primary_key=True, nullable=False)
     trigger_type_name = Column(Text, nullable=False)
 
     contexts = relationship('Context', back_populates='trigger_type')
@@ -66,7 +68,7 @@ class TriggerType(Base):
 
 class ProgrammingLanguage(Base):
     __tablename__ = 'programming_language'
-    language_id = Column(Integer, primary_key=True, nullable=False)
+    language_id = Column(Sequence("programming_language_seq", start=1), primary_key=True, nullable=False)
     language_name = Column(Text, nullable=False)
 
     contexts = relationship('Context', back_populates='language')
@@ -76,7 +78,7 @@ class HadGeneration(Base):
     __tablename__ = 'had_generation'
     query_id = Column(UUID(as_uuid=True), ForeignKey('query.query_id', ondelete="CASCADE"), primary_key=True,
                       nullable=False)
-    model_id = Column(Integer, ForeignKey('model_name.model_id'), primary_key=True, nullable=False)
+    model_id = Column(BIGINT, ForeignKey('model_name.model_id'), primary_key=True, nullable=False)
     completion = Column(Text, nullable=False)
     generation_time = Column(Integer, nullable=False)
     shown_at = Column(ARRAY(DateTime(timezone=True)), nullable=False)
@@ -110,9 +112,9 @@ class Context(Base):
     context_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     prefix = Column(Text)
     suffix = Column(Text)
-    language_id = Column(Integer, ForeignKey('programming_language.language_id'), index=True)
-    trigger_type_id = Column(Integer, ForeignKey('trigger_type.trigger_type_id'), index=True)
-    version_id = Column(Integer, ForeignKey('plugin_version.version_id'), index=True)
+    language_id = Column(BIGINT, ForeignKey('programming_language.language_id'), index=True)
+    trigger_type_id = Column(BIGINT, ForeignKey('trigger_type.trigger_type_id'), index=True)
+    version_id = Column(BIGINT, ForeignKey('plugin_version.version_id'), index=True)
 
     language = relationship('ProgrammingLanguage', back_populates='contexts')
     trigger_type = relationship('TriggerType', back_populates='contexts')

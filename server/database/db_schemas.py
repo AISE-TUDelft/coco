@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # pydantic classes for the database models
@@ -10,7 +10,7 @@ class UserBase(BaseModel):
 
 class User(UserBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserCreate(UserBase):
@@ -30,7 +30,7 @@ class QueryBase(BaseModel):
 
 class Query(QueryBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class QueryCreate(QueryBase):
@@ -39,13 +39,14 @@ class QueryCreate(QueryBase):
 
 # Model Name
 class ModelNameBase(BaseModel):
-    model_id: int
+    model_id: int = Field(..., alias="id")
     model_name: str
 
 
 class ModelName(ModelNameBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
+        protected_namespaces = ()
 
 
 class ModelNameCreate(ModelNameBase):
@@ -62,7 +63,7 @@ class PluginVersionBase(BaseModel):
 
 class PluginVersion(PluginVersionBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PluginVersionCreate(PluginVersionBase):
@@ -77,7 +78,7 @@ class TriggerTypeBase(BaseModel):
 
 class TriggerType(TriggerTypeBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TriggerTypeCreate(TriggerTypeBase):
@@ -93,7 +94,7 @@ class ProgrammingLanguageBase(BaseModel):
 
 class ProgrammingLanguage(ProgrammingLanguageBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ProgrammingLanguageCreate(ProgrammingLanguageBase):
@@ -113,7 +114,7 @@ class HadGenerationBase(BaseModel):
 
 class HadGeneration(HadGenerationBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class HadGenerationCreate(HadGenerationBase):
@@ -133,7 +134,7 @@ class GroundTruthBase(BaseModel):
 
 class GroundTruth(GroundTruthBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class GroundTruthCreate(GroundTruthBase):
@@ -152,7 +153,7 @@ class ContextBase(BaseModel):
 
 class Context(ContextBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ContextCreate(ContextBase):
@@ -166,3 +167,12 @@ class TelemetryBase(BaseModel):
     typing_speed: int
     document_char_length: int
     relative_document_position: float
+
+
+class Telemetry(TelemetryBase):
+    class Config:
+        from_attributes = True
+
+
+class TelemetryCreate(TelemetryBase):
+    pass

@@ -4,9 +4,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from models.CoCoConfig import CoCoConfig
 
 
-config = CoCoConfig(survey_link='survey.link', database_url='database.url')
+config = CoCoConfig()
 
-SQLALCHEMY_DATABASE_URL = CoCoConfig().database_url
+SQLALCHEMY_DATABASE_URL = config.database_url
 # SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
 
 engine = create_engine(
