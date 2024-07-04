@@ -18,6 +18,24 @@ class GenerateRequest(BaseModel):
     version     :str            # the version of the extension
     store       :bool           # whether to store the request in the database
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "user_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "request_id": "123bbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                    "prefix": "import numpy as np\n\ndef main(): \n    items = [1,2,3]\n\n    # convert items to numpy array \n    arr = ",
+                    "suffix": "\n\n    # get the data type\n    print(arr.dtype)",
+                    "trigger": "auto",
+                    "language": "py",
+                    "ide": "vscode",
+                    "version": "0.0.1",
+                    "store": "true"
+                }
+            ]
+        }
+    }
+
 
 class VerifyRequest(BaseModel):
     """
@@ -37,3 +55,13 @@ class SurveyRequest(BaseModel):
     It is used to gain input about the user's experience with the extension.
     """
     user_id: str  # uuid
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "user_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                }
+            ]
+        }
+    }

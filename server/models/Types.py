@@ -20,6 +20,7 @@ class IDEType(str, Enum):
     It indicates the IDE in which the code snippet is being written.
     """
     # TODO: decide whether it should be JetBrains collectively or each IDE separately
+    # -Aral (4 Jul): I think let's collect what we can collect, so each IDE separately
     vscode = "vscode"
     jetbrains = "jetbrains"
 
@@ -30,6 +31,8 @@ class LanguageType(str, Enum):
     It indicates the programming language of the code snippet for which the completion is requested.
     """
     # TODO: adhere to the types as provided by the vsc api
+    # -Aral (4 Jul): We will need to refactor this code (all models sent on 
+    # the network) to also be included on the client-side plugin somehow
     py = "py"
     js = "js"
     java = "java"
