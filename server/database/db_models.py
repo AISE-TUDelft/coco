@@ -84,6 +84,7 @@ class HadGeneration(Base):
     shown_at = Column(ARRAY(DateTime(timezone=True)), nullable=False)
     was_accepted = Column(Boolean, nullable=False)
     confidence = Column(Float, nullable=False)
+    logprobs = Column(ARRAY(Float), nullable=False)
 
     query = relationship('Query', back_populates='had_generations')
     model = relationship('ModelName', back_populates='had_generations')

@@ -112,6 +112,7 @@ class HadGenerationBase(BaseModel):
     shown_at: list[str]
     was_accepted: bool
     confidence: float
+    logprobs: list[float]
 
 
 class HadGeneration(HadGenerationBase):

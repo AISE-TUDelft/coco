@@ -27,7 +27,7 @@ class VerifyRequest(BaseModel):
     """
     verify_token: str               # the uuid of the request to be verified
     chosen_model: Union[str, None]  # the model chosen by the user
-    ground_truth: str               # the ground truth of the completion
+    ground_truth: Union[str, None]               # the ground truth of the completion
 
 
 class SurveyRequest(BaseModel):

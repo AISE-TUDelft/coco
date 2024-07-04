@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.had_generation
     shown_at timestamp with time zone[] NOT NULL,
     was_accepted boolean NOT NULL,
     confidence double precision NOT NULL,
+    logprobs double precision[] NOT NULL,
     PRIMARY KEY (query_id, model_id)
 );
 

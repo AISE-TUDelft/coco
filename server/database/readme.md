@@ -49,6 +49,7 @@ erDiagram
         timestamp[] shown_at
         boolean was_accepted
         double confidence
+        double[] logprobs
     }
     
     GROUND_TRUTH {
@@ -154,6 +155,7 @@ This table contains all the completions that have been generated; the actual cod
 - `completion: TEXT` The code that has been generated.
 - `generation_time: INTEGER` Time taken to generate the code, in milliseconds.
 - `confidence: FLOAT` Confidence of the model in the generated code.
+- `logprobs: FLOAT[]` Log probabilities of the generated tokens.
 
 ###### Computed Client-Side (& MUTABLE)
 
