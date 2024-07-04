@@ -25,7 +25,7 @@ from database.crud import (create_user, get_user_by_token, add_model,
                            get_queries_bound_by_context, get_user_queries, get_generations_by_query_id,
                            add_generation, get_generations_by_query_and_model_id,
                            get_generations_having_acceptance_of, get_generations_having_confidence_in_range,
-                           get_generations_with_shown_times_in_range)
+                           get_generations_with_shown_times_in_range, update_status_of_generation)
 
 from testcontainers.postgres import PostgresContainer
 
@@ -481,7 +481,7 @@ class TestCrudOperations:
         assert all([evaluate_equivalence_of_ground_truths(gt, ground_truth_3)
                     for gt in ground_truths_for_query_2_in_time_range_all])
 
-    def test_adding_had_generations(self, db_transaction):
+    def test_adding_and_reading_had_generations(self, db_transaction):
         # Arrange
         user, context1, context2, telemetry1, telemetry2, query_1, query_2 = (
             bring_database_in_state_with_two_queries(db_transaction))
@@ -567,3 +567,32 @@ class TestCrudOperations:
                     evaluate_equivalence_of_generations(g, had_generation_2) or
                     evaluate_equivalence_of_generations(g, had_generation_3)
                     for g in generations_with_shown_times_in_range_all])
+
+    def test_updating_generation_status(self, db_transaction):
+        # Arrange
+        user, context1, context2, telemetry1, telemetry2, query_1, query_2 = (
+            bring_database_in_state_with_two_queries(db_transaction))
+
+        model_id = 1
+        completion = "World!"
+        generation_time = 100
+        shown_at_1 = [str(datetime.now(tz=datetime.now().astimezone().tzinfo) + timedelta(seconds=100))]
+        shown_at_2 = shown_at_1 + [str(datetime.now(tz=datetime.now().astimezone().tzinfo) + timedelta(seconds=200))]
+        was_accepted = False
+        confidence = 0.5
+        generation = HadGenerationCreate(query_id=query_1.query_id, model_id=model_id, completion=completion,
+                                         generation_time=generation_time, shown_at=shown_at_1,
+                                         was_accepted=was_accepted, confidence=confidence)
+
+        generation_returned_by_db = add_generation(db_transaction, generation)
+
+        # Act
+        new_status = HadGenerationUpdate(was_accepted=True, shown_at=shown_at_2)
+        update_status_of_generation(db_transaction, generation_returned_by_db.query_id,
+                                    generation_returned_by_db.model_id, new_status)
+        updated_generation = get_generations_by_query_id(db_transaction, query_1.query_id)[0]
+
+        # Assert
+        assert updated_generation.was_accepted
+        assert len(updated_generation.shown_at) == 2
+        assert all([str(s) in shown_at_2 for s in updated_generation.shown_at])

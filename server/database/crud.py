@@ -10,7 +10,16 @@ from database.db_schemas import *
 
 # helper functions
 def is_valid_uuid(uuid: str) -> bool:
-    return len(uuid) == 36
+    if not uuid:
+        return False
+    elif isinstance(uuid, UUID):
+        return True
+    else:
+        try:
+            UUID(uuid)
+            return True
+        except ValueError:
+            return False
 
 
 # READ operation
@@ -381,3 +390,21 @@ def add_generation(db: Session, generation: db_schemas.HadGenerationCreate) -> d
     db.commit()
     db.refresh(db_generation)
     return db_generation
+
+
+# UPDATE operations
+def update_status_of_generation(db: Session, query_id: str, model_id: int,
+                                new_status: db_schemas.HadGenerationUpdate) -> bool:
+    assert is_valid_uuid(query_id)
+    db_generation = db.query(db_models.HadGeneration).filter(db_models.HadGeneration.query_id == query_id,
+                                                             db_models.HadGeneration.model_id == model_id).first()
+    try:
+        if db_generation:
+            for key, value in new_status.model_dump().items():
+                setattr(db_generation, key, value)
+            db.commit()
+            return True
+    except Exception as e:
+        print(f"Error while updating generation status: {e}")
+        return False
+    return False

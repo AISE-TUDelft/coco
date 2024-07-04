@@ -123,6 +123,11 @@ class HadGenerationCreate(HadGenerationBase):
     pass
 
 
+class HadGenerationUpdate(BaseModel):
+    shown_at: list[str]
+    was_accepted: bool
+
+
 # Ground Truth
 class GroundTruthBase(BaseModel):
     query_id: str
