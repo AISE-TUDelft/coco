@@ -14,3 +14,4 @@ vllm
 
 pytest~=8.2.2
 testcontainers~=4.7.1
+pytest-postgresql

@@ -31,8 +31,13 @@ To best leverage FIM, we should use a Base model (as opposed to Instruct).
 '''
 
 from langchain.chains.llm import LLMChain
-from vllm_modified import VLLM 
 from langchain_core.prompts import PromptTemplate
+from langchain.output_parsers import PydanticOutputParser
+from langchain_community.llms.vllm import VLLM
+
+# TODO: fix relative import to absolute by importing server as package
+from .vllm_modified import VLLM_M 
+from ...database.db_schemas import HadGenerationCreate
 
 '''
 TEMPLATES. DeepSeek-Coder (v1) base models support (disjoint) two types of completion:
@@ -54,7 +59,7 @@ VLLM Engine. Supported features:
 3. Automatic Prefix Caching (APC) for long-document queries and multi-round conversation. 
 '''
 
-llm = VLLM(
+llm = VLLM_M(
     model='deepseek-ai/deepseek-coder-1.3b-base',
     trust_remote_code=True, 
 
@@ -74,7 +79,11 @@ llm = VLLM(
     presence_penalty=1.0    # penalise new tokens based on their frequency in the generated text so far
 )
 
-llm_chain = prompt | llm 
+'''
+Output parser. Maps it to a database schema. 
+'''
+
+llm_chain = prompt | llm # | output_parser
 
 # TODO: refactor to a test suite
 pre, suf = '''
@@ -109,5 +118,6 @@ if __name__ == '__main__':
     question_2 = llm_chain.invoke(input=dict(prefix=pre, suffix=suf))
 
     import pdb; pdb.set_trace()
+
     print_fim(question_1)
     print_fim(question_2)

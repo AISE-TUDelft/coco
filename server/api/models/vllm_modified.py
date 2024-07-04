@@ -3,8 +3,13 @@
 Modified VLLM model to return logprobs and other metadata. 
 Why can't I just override the `_generate` method? Pydantic doesn't allow this. 
 See https://github.com/pydantic/pydantic/issues/288
+I modify vLLM's integration with LangChain to add metadata, in `_generate`.
 
-Only the `_generate` method is modified.
+Additionally, the top-level invocation command on a LangChain is `invoke`. 
+This returns just the output Text in case of ABC `BaseLLM`, which `VLLM` implements. 
+Thus, I modify the `invoke` method to return the metadata as well.
+
+I also add `_agenerate` and `ainvoke` because we're in async land. 
 '''
 
 from typing import Any, Dict, List, Optional
@@ -13,12 +18,12 @@ from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.llms import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from langchain_core.pydantic_v1 import Field, root_validator
+from vllm import SamplingParams
 
-from langchain_community.llms.openai import BaseOpenAI
-from langchain_community.utils.openai import is_openai_v1
+from langchain_core.runnables import RunnableConfig, ensure_config
+from langchain_core.language_models.base import LanguageModelInput
 
-
-class VLLM(BaseLLM):
+class VLLM_M(BaseLLM):
     """VLLM language model."""
 
     model: str = ""
@@ -132,8 +137,6 @@ class VLLM(BaseLLM):
     ) -> LLMResult:
         ''' Run the LLM on the given prompt and input. Return logprobs and other metadata '''
 
-        from vllm import SamplingParams
-
         # build sampling parameters
         params = {**self._default_params, **kwargs, "stop": stop}
         sampling_params = SamplingParams(**params)
@@ -153,42 +156,35 @@ class VLLM(BaseLLM):
 
             generations.append([Generation(text=text, generation_info=generation_info)])
 
-        import pdb; pdb.set_trace()
         return LLMResult(generations=generations)
+
+    # NOTE: Added from langchain_core.language_models.llms.BaseLLM
+    def invoke(
+        self,
+        input: LanguageModelInput,
+        config: Optional[RunnableConfig] = None,
+        *,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> str:
+        config = ensure_config(config)
+        return (
+            self.generate_prompt(
+                [self._convert_input(input)],
+                stop=stop,
+                callbacks=config.get("callbacks"),
+                tags=config.get("tags"),
+                metadata=config.get("metadata"),
+                run_name=config.get("run_name"),
+                run_id=config.pop("run_id", None),
+                **kwargs,
+            )
+            .generations[0][0]
+            # .text
+        )
+
 
     @property
     def _llm_type(self) -> str:
         """Return type of llm."""
         return "vllm"
-
-
-class VLLMOpenAI(BaseOpenAI):
-    """vLLM OpenAI-compatible API client"""
-
-    @classmethod
-    def is_lc_serializable(cls) -> bool:
-        return False
-
-    @property
-    def _invocation_params(self) -> Dict[str, Any]:
-        """Get the parameters used to invoke the model."""
-
-        params: Dict[str, Any] = {
-            "model": self.model_name,
-            **self._default_params,
-            "logit_bias": None,
-        }
-        if not is_openai_v1():
-            params.update(
-                {
-                    "api_key": self.openai_api_key,
-                    "api_base": self.openai_api_base,
-                }
-            )
-
-        return params
-
-    @property
-    def _llm_type(self) -> str:
-        """Return type of llm."""
-        return "vllm-openai"

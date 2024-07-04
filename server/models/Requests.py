@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Union
 
-from models.Types import TriggerType, LanguageType, IDEType
+from .Types import TriggerType, LanguageType, IDEType
 
 class GenerateRequest(BaseModel):
     """

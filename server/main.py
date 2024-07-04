@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.responses import FileResponse
 
-from api.api import router as v3_router
+from .api.api import router as v3_router
 
 app = FastAPI(
     title='CoCo API',
