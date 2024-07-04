@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 
     # TODO: set up the generation models as a branched langchain
     # see https://python.langchain.com/v0.1/docs/expression_language/cookbook/multiple_chains/#branching-and-merging
-    from .api.models import Models
+    from .completion.models import Models
     global models
     models = Models
 

@@ -164,7 +164,7 @@ CREATE INDEX idx_query_id_truth_timestamp ON public.ground_truth (query_id, trut
 
 -- now that we have everything set up, we can add some default values
 
-INSERT INTO public.model_name (model_name) VALUES ('deepseek_base'), ('deepseek_instruct'), ('starcoder2');
+INSERT INTO public.model_name (model_name) VALUES ('deepseek-base-1.3b'), ('starcoder2-3b');
 INSERT INTO public.programming_language (language_name) VALUES ('plaintext'), ('code-text-binary'), ('Log'),
                                                                ('log'), ('scminput'), ('bat'), ('clojure'),
                                                                ('coffeescript'), ('jsonc'), ('json'), ('c'), ('cpp'),
