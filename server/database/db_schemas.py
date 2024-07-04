@@ -74,11 +74,12 @@ class PluginVersionCreate(PluginVersionBase):
 
 # Trigger Type
 class TriggerTypeBase(BaseModel):
-    trigger_type_id: int
     trigger_type_name: str
 
 
 class TriggerType(TriggerTypeBase):
+    trigger_type_id: int
+
     class Config:
         from_attributes = True
 
@@ -89,12 +90,11 @@ class TriggerTypeCreate(TriggerTypeBase):
 
 # Programming Language
 class ProgrammingLanguageBase(BaseModel):
-    language_id: int
     language_name: str
-    language_version: str
 
 
 class ProgrammingLanguage(ProgrammingLanguageBase):
+    language_id: int
     class Config:
         from_attributes = True
 
@@ -126,12 +126,8 @@ class HadGenerationCreate(HadGenerationBase):
 # Ground Truth
 class GroundTruthBase(BaseModel):
     query_id: str
-    model_id: int
-    completion: str
-    generation_time: int
-    shown_at: list[str]
-    was_accepted: bool
-    confidence: float
+    truth_timestamp: str
+    ground_truth: str
 
 
 class GroundTruth(GroundTruthBase):

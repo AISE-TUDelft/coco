@@ -86,10 +86,10 @@ def get_generations_by_query_id(db: Session, query_id: str) -> list[Type[db_mode
 
 
 def get_generations_by_query_and_model_id(db: Session, query_id: str,
-                                          model_id: int) -> list[Type[db_models.HadGeneration]]:
+                                          model_id: int) -> Type[db_models.HadGeneration]:
     assert is_valid_uuid(query_id)
     return db.query(db_models.HadGeneration).filter(db_models.HadGeneration.query_id == query_id,
-                                                    db_models.HadGeneration.model_id == model_id).all()
+                                                    db_models.HadGeneration.model_id == model_id).first()
 
 
 def get_generations_having_confidence_in_range(db: Session, lower_bound: float = None,
@@ -251,6 +251,19 @@ def get_contexts_where_trigger_type_is(db: Session, trigger_type_id: int) -> lis
 
 def get_contexts_where_version_is(db: Session, version_id: int) -> list[Type[db_models.Context]]:
     return db.query(db_models.Context).filter(db_models.Context.version_id == version_id).all()
+
+
+def get_contexts_where_prefix_contains(db: Session, text: str) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.prefix.contains(text)).all()
+
+
+def get_contexts_where_suffix_contains(db: Session, text: str) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.suffix.contains(text)).all()
+
+
+def get_contexts_where_prefix_or_suffix_contains(db: Session, text: str) -> list[Type[db_models.Context]]:
+    return db.query(db_models.Context).filter(db_models.Context.prefix.contains(text),
+                                              db_models.Context.suffix.contains(text)).all()
 
 
 # trigger_type Table
