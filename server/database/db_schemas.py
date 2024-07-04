@@ -39,11 +39,12 @@ class QueryCreate(QueryBase):
 
 # Model Name
 class ModelNameBase(BaseModel):
-    model_id: int = Field(..., alias="id")
     model_name: str
 
 
 class ModelName(ModelNameBase):
+    model_id: int = Field(..., alias="id")
+
     class Config:
         from_attributes = True
         protected_namespaces = ()
@@ -55,13 +56,14 @@ class ModelNameCreate(ModelNameBase):
 
 # Plugin Version
 class PluginVersionBase(BaseModel):
-    version_id: int
     version_name: str
     ide_type: str
     description: str
 
 
 class PluginVersion(PluginVersionBase):
+    version_id: int
+
     class Config:
         from_attributes = True
 

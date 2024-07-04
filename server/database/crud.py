@@ -266,6 +266,27 @@ def get_trigger_type_by_name(db: Session, trigger_type_name: str) -> db_models.T
     return db.query(db_models.TriggerType).filter(db_models.TriggerType.trigger_type_name == trigger_type_name).first()
 
 
+# plugin_version Table
+def get_all_plugin_versions(db: Session) -> list[Type[db_models.PluginVersion]]:
+    return db.query(db_models.PluginVersion).all()
+
+
+def get_plugin_version_by_id(db: Session, version_id: int) -> db_models.PluginVersion:
+    return db.query(db_models.PluginVersion).filter(db_models.PluginVersion.version_id == version_id).first()
+
+
+def get_plugin_versions_by_ide_type(db: Session, ide_type: str) -> list[Type[db_models.PluginVersion]]:
+    return db.query(db_models.PluginVersion).filter(db_models.PluginVersion.ide_type == ide_type).all()
+
+
+def get_plugin_versions_by_name_containing(db: Session, version_name: str) -> list[Type[db_models.PluginVersion]]:
+    return db.query(db_models.PluginVersion).filter(db_models.PluginVersion.version_name.contains(version_name)).all()
+
+
+def get_plugin_versions_by_description_containing(db: Session, description: str) -> list[Type[db_models.PluginVersion]]:
+    return db.query(db_models.PluginVersion).filter(db_models.PluginVersion.description.contains(description)).all()
+
+
 # CREATE operations
 # Simple CREATE operations with complete data -> nothing has to be checked or generated/calculated before creating
 def create_user(db: Session, user: db_schemas.UserCreate) -> db_models.User:

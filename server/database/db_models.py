@@ -1,7 +1,7 @@
 from database.database import Base
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, ForeignKey, DateTime,
-    Float, create_engine, UniqueConstraint, Index, ARRAY, BIGINT, Sequence
+    Float, create_engine, UniqueConstraint, Index, ARRAY, BIGINT
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -42,7 +42,7 @@ class Query(Base):
 
 class ModelName(Base):
     __tablename__ = 'model_name'
-    model_id = Column(Sequence("model_name_seq", start=1), primary_key=True, nullable=False)
+    model_id = Column(BIGINT, primary_key=True, nullable=False, autoincrement=True)
     model_name = Column(Text, nullable=False)
 
     had_generations = relationship('HadGeneration', back_populates='model')
@@ -50,7 +50,7 @@ class ModelName(Base):
 
 class PluginVersion(Base):
     __tablename__ = 'plugin_version'
-    version_id = Column(Sequence("plugin_version_seq", start=1), primary_key=True, nullable=False)
+    version_id = Column(BIGINT, primary_key=True, nullable=False, autoincrement=True)
     version_name = Column(Text, nullable=False)
     ide_type = Column(Text, nullable=False)
     description = Column(Text)
@@ -60,7 +60,7 @@ class PluginVersion(Base):
 
 class TriggerType(Base):
     __tablename__ = 'trigger_type'
-    trigger_type_id = Column(Sequence("trigger_type_seq", start=1), primary_key=True, nullable=False)
+    trigger_type_id = Column(BIGINT, primary_key=True, nullable=False, autoincrement=True)
     trigger_type_name = Column(Text, nullable=False)
 
     contexts = relationship('Context', back_populates='trigger_type')
@@ -68,7 +68,7 @@ class TriggerType(Base):
 
 class ProgrammingLanguage(Base):
     __tablename__ = 'programming_language'
-    language_id = Column(Sequence("programming_language_seq", start=1), primary_key=True, nullable=False)
+    language_id = Column(BIGINT, primary_key=True, nullable=False, autoincrement=True)
     language_name = Column(Text, nullable=False)
 
     contexts = relationship('Context', back_populates='language')
