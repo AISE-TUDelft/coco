@@ -1,22 +1,25 @@
+import datetime
+
 from pydantic import BaseModel
 from typing import Union
 
 from .Types import TriggerType, LanguageType, IDEType
+
 
 class GenerateRequest(BaseModel):
     """
     The GenerateRequest class is a Pydantic BaseModel class that defines the structure of a request for code generation.
     This request is meant to be used along with the /generate endpoint.
     """
-    user_id     :str            # uuid
-    request_id  :str            # uuid
-    prefix      :str            # the context before the point of generation
-    suffix      :str            # the context after the point of generation
-    trigger     :TriggerType    # see TriggerType in Types.py
-    language    :LanguageType   # see LanguageType in Types.py
-    ide         :IDEType        # see IDEType in Types.py
-    version     :str            # the version of the extension
-    store       :bool           # whether to store the request in the database
+    user_id: str  # uuid
+    request_id: str  # uuid
+    prefix: str  # the context before the point of generation
+    suffix: str  # the context after the point of generation
+    trigger: TriggerType  # see TriggerType in Types.py
+    language: LanguageType  # see LanguageType in Types.py
+    ide: IDEType  # see IDEType in Types.py
+    version: str  # the version of the extension
+    store: bool  # whether to store the request in the database
 
     model_config = {
         "json_schema_extra": {
@@ -43,9 +46,11 @@ class VerifyRequest(BaseModel):
     This request is meant to be used along with the /verify endpoint.
     It is used to gain input about the chosen completion (if any) as well as the ground truth of the completion.
     """
-    verify_token: str               # the uuid of the request to be verified
+    verify_token: str  # the uuid of the request to be verified
     chosen_model: Union[str, None]  # the model chosen by the user
-    ground_truth: Union[str, None]               # the ground truth of the completion
+    shown_at: Union[dict[str, list[datetime.datetime]], None]
+    # the timestamps at which the completions were shown to the user
+    ground_truth: Union[str, None]  # the ground truth of the completion
 
 
 class SurveyRequest(BaseModel):

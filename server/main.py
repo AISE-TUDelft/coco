@@ -31,7 +31,8 @@ async def lifespan(app: FastAPI):
     pass 
 
 router = APIRouter(prefix='/api/v3')
-config = CoCoConfig(survey_link='survey.link/{user_id}', database_url='database.url', test_database_url='test.database.url')
+config = CoCoConfig(survey_link='survey.link/{user_id}', database_url='database.url',
+                    test_database_url='test.database.url')
 
 # TODO: Try streaming to reduce latency
 # TODO: Rate limiting 
