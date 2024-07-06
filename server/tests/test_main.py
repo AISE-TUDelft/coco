@@ -52,7 +52,7 @@ def test_generation():
 
         assert response.status_code == 200
         assert len(response.json()['completions']) > 0
-    
+
         # TODO: let's also assert that these things are in fact stored
         json = GenerateRequest(**gen_req | {'store': True})
         raise NotImplementedError('TODO: test that the request is stored')
@@ -79,7 +79,8 @@ def test_batch_generation():
 # with more exhaustive tests for measuring inference speed 
 # and ensuring non-regression in subsequent updates.
 
-# NOTE: leaving this here in case it's useful for future testing
+
+# NOTE: leaving two functions here in case it's useful for future testing
 # pre, suf = '''
 # import numpy as np
 
@@ -94,3 +95,8 @@ def test_batch_generation():
 
 # '''.strip().split('｜')
 
+# # helper for debugging what is generated exactly in FIM
+# grey = '\033[90m{}\033[0m'
+# print_fim = lambda gen: print(''.join([
+#     grey.format(gen['prefix']), gen['text'], grey.format(gen['suffix']), '\n'
+# ]))

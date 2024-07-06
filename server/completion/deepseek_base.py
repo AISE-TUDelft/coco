@@ -1,3 +1,7 @@
+'''
+Interactions with Deepseek-base-1.3b
+'''
+
 ''' 
 DeepSeek-Coder v1. Paper: https://arxiv.org/pdf/2401.14196
 Base models are trained with FIM, Instruct are fine-tuned to follow instructions (no FIM). 
@@ -30,40 +34,39 @@ in a MoE model, so I leave that for later. The V1-6.7B model seems ideal in term
 To best leverage FIM, we should use a Base model (as opposed to Instruct). 
 '''
 
-from langchain.chains.llm import LLMChain
 from langchain_core.prompts import PromptTemplate
-from langchain.output_parsers import PydanticOutputParser
-from langchain_community.llms.vllm import VLLM
-
-# TODO: fix relative import to absolute by importing server as package
 from .vllm_modified import VLLM_M 
-from ...database.db_schemas import HadGenerationCreate
+# TODO: consider changing relative import to absolute by importing server as package
 
 '''
-TEMPLATES. DeepSeek-Coder (v1) base models support (disjoint) two types of completion:
+TEMPLATES. DeepSeek-Coder (v1) base models are finetuned on two 
+(disjoint) types of completion. 
+
 1. Code Insertion (FIM)
 2. Repo-level Code Completion 
 
-# TODO: Repo-level code completion is useful with RAG. I'm sticking to FIM for now. 
+# TODO: Repo-level code completion is useful with RAG. 
+# I'm sticking to FIM for now. 
 '''
 
-# You don't want to know how long i spent debugging to figure out that the | characters here
-# are not the actual | characters, but U+ff5c
+# not the actual | characters, but U+ff5c
 template = '''<｜fim▁begin｜>{prefix}<｜fim▁hole｜>{suffix}<｜fim▁end｜>'''
 prompt = PromptTemplate.from_template(template)
 
 ''' 
 VLLM Engine. Supported features: 
 1. Tensor parallelism (multi-GPU inference)
-2. AWQ Quantisation (3/4 bit, 3.2x speedup, see https://github.com/mit-han-lab/llm-awq)
-3. Automatic Prefix Caching (APC) for long-document queries and multi-round conversation. 
+2. AWQ Quantisation (3/4 bit, 3.2x speedup, 
+    see https://github.com/mit-han-lab/llm-awq)
+3. Automatic Prefix Caching (APC) for long-document queries 
+    and multi-round conversation. 
 '''
 
 llm = VLLM_M(
     model='deepseek-ai/deepseek-coder-1.3b-base',
     trust_remote_code=True, 
 
-    logprobs=1, # TODO: these are not returned for some effing reason
+    logprobs=1, # TODO: this variable is not used at all...
 
     # HYPERPARAMETERS (FOR AB STUDYYYYY)
     vllm_kwargs=dict(
@@ -79,45 +82,4 @@ llm = VLLM_M(
     presence_penalty=1.0    # penalise new tokens based on their frequency in the generated text so far
 )
 
-'''
-Output parser. Maps it to a database schema. 
-'''
-
-llm_chain = prompt | llm # | output_parser
-
-# TODO: refactor to a test suite
-pre, suf = '''
-import numpy as np
-
-def main(): 
-    items = [1,2,3]
-
-    # convert items to numpy array 
-    arr = ｜
-
-    # get the data type
-    print(arr.dtype)
-
-'''.strip().split('｜')
-
-# to manually test this file by running it
-if __name__ == '__main__':
-
-    # helper for debugging what is generated exactly in FIM
-    grey = '\033[90m{}\033[0m'
-    print_fim = lambda gen: print(''.join([
-        grey.format(gen['prefix']), gen['text'], grey.format(gen['suffix']), '\n'
-    ]))
-
-    # TODO: Given how badly the LLM fares on question_1, I should check how they trained with FIM
-    # It seems that it does not do well with being split in the middle of a line. 
-    question_1 = llm_chain.invoke(input=dict(
-        prefix='What is the capital of France?\n', suffix='is the capital of France!'
-    ))
-
-    question_2 = llm_chain.invoke(input=dict(prefix=pre, suffix=suf))
-
-    import pdb; pdb.set_trace()
-
-    print_fim(question_1)
-    print_fim(question_2)
+llm_chain = prompt | llm 

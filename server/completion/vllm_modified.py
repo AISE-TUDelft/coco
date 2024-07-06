@@ -1,3 +1,6 @@
+''' 
+Interactions between vLLM and LangChain
+'''
 
 ''' 
 Modified VLLM model to return logprobs and other metadata. 
@@ -166,22 +169,19 @@ class VLLM_M(BaseLLM):
         *,
         stop: Optional[List[str]] = None,
         **kwargs: Any,
-    ) -> str:
+    ) -> Generation:
         config = ensure_config(config)
-        return (
-            self.generate_prompt(
-                [self._convert_input(input)],
-                stop=stop,
-                callbacks=config.get("callbacks"),
-                tags=config.get("tags"),
-                metadata=config.get("metadata"),
-                run_name=config.get("run_name"),
-                run_id=config.pop("run_id", None),
-                **kwargs,
-            )
-            .generations[0][0]
-            # .text
-        )
+        llm_result = self.generate_prompt(
+            [self._convert_input(input)],
+            stop=stop,
+            callbacks=config.get("callbacks"),
+            tags=config.get("tags"),
+            metadata=config.get("metadata"),
+            run_name=config.get("run_name"),
+            run_id=config.pop("run_id", None),
+            **kwargs,
+        ).generations[0][0]
+        return llm_result
 
 
     @property

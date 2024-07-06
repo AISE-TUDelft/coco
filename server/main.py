@@ -3,13 +3,13 @@ import asyncio, time
 from fastapi import FastAPI, APIRouter
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from .models.Requests import GenerateRequest, VerifyRequest, SurveyRequest
 from .models.Responses import GenerateResponse, VerifyResponse, SurveyResponse
 from .models.CoCoConfig import CoCoConfig
 
-
-models = {} 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -19,38 +19,40 @@ async def lifespan(app: FastAPI):
     # redis_connection = redis.from_url('redis://localhost', encoding='utf-8', decode_responses=True)
     # await FastAPILimiter.init(redis_connection)
 
+    # database = create_engine(config.database_url)
+    # global session # I think I'm using this keyword right but im not sure
+    # session = Session(database)
+
     # TODO: set up the generation models as a branched langchain
     # see https://python.langchain.com/v0.1/docs/expression_language/cookbook/multiple_chains/#branching-and-merging
-    from .completion.models import Models
-    global models
-    models = Models
+    from .completion import chain as completion_chain 
+    global chain
+    chain = completion_chain
 
     yield
 
     # TODO: potential generation model cleanup here
     pass 
 
+config = CoCoConfig(
+    survey_link         = 'survey.link/{user_id}', 
+    database_url        = 'database.url', 
+    test_database_url   = 'test.database.url'
+)
 router = APIRouter(prefix='/api/v3')
-config = CoCoConfig(survey_link='survey.link/{user_id}', database_url='database.url',
-                    test_database_url='test.database.url')
 
 # TODO: Try streaming to reduce latency
 # TODO: Rate limiting 
 # TODO: Can squeeze out a little more performance with https://fastapi.tiangolo.com/advanced/custom-response/#use-orjsonresponse
+# TODO: Authentication & Session management (also with db?)
 @router.post('/complete')
 async def autocomplete_v3(gen_req: GenerateRequest) -> GenerateResponse:
     ''' Endpoint to generate a dict of completions; {model_name: completion} '''
+
     t = time.time()
-
-    # TODO: parallel processing: this section needs a whole rewrite for async
-    # completions = await asyncio.gather(model(inputs) for model in models)
-    # NOTE: could write your own langchain PromptTemplate that expects a GenerateRequest
-    # but let's save some time: https://api.python.langchain.com/en/latest/prompts/langchain_core.prompts.prompt.PromptTemplate.html 
-    inputs = {'prefix': gen_req.prefix, 'suffix': gen_req.suffix}
-    completions = [model(inputs) for model in models]
-    completions = dict(zip(models.values(), [completion.text for completion in completions]))
-
+    completions : dict[str, str] = chain.invoke(gen_req)
     t = time.time() - t # seconds (float)
+
     return GenerateResponse(time=t, completions=completions)
 
 @router.post('/verify')
@@ -76,5 +78,3 @@ app.include_router(router)
 @app.get('/index.html')
 async def root():
     return FileResponse('./static/index.html')
-
-
