@@ -30,8 +30,8 @@ class GenerateRequest(BaseModel):
                     "prefix": "import numpy as np\n\ndef main(): \n    items = [1,2,3]\n\n    # convert items to numpy array \n    arr = ",
                     "suffix": "\n\n    # get the data type\n    print(arr.dtype)",
                     "trigger": "auto",
-                    "language": "py",
-                    "ide": "vscode",
+                    "language": "python",
+                    "ide": "VSCode",
                     "version": "0.0.1",
                     "store": "true"
                 }
