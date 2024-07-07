@@ -1,7 +1,7 @@
 # CoCo Server
 
-- [`api`](./api) contains the exposed api and request logic 
-- [`database`](./database) contains database-related backend models and logic.
+- [`completion`](./completion) handles LLM-inference logic.
+- [`database`](./database) contains data models for storage & network.
 - [`static`](./static) are static resources like the splash page.
 - [`tests`](./tests) contains our tests, of course!
 
@@ -14,6 +14,17 @@ With Python `3.11` ([requirement in `vllm`](https://docs.vllm.ai/en/stable/getti
 ```bash
 pip install -r requirements.txt
 ```
+
+#### Running
+To run the server, use 
+
+```bash
+# TODO: update this to pass in the correct survey_link and db_url
+fastapi dev main.py
+```
+
+---
+
 ## Requirements for RAG (patch 1)
 
 As this patch introduces the capability to have prompts be enhanced through RAG (Retrieval-Augmented Generation),
@@ -28,12 +39,3 @@ cd pgvector
 make
 make install # may need sudo
 ```
-
-#### Running
-To run the server, use 
-
-```bash
-# TODO: update this to pass in the correct survey_link and db_url
-fastapi dev main.py
-```
-
