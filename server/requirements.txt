@@ -4,14 +4,16 @@ pydantic~=2.7.1
 fastapi-limiter~=0.1.6
 pydantic_settings
 
-psycopg2-binary 
 SQLAlchemy~=2.0.30
+# We have two almost identical dependencies here...
+psycopg_binary~=3.2.1
+psycopg2-binary~=2.9.9
+pytest-postgresql~=6.0.0
 
-torch
+torch~=2.3.0
 langchain~=0.2.6
-langchain-community
-vllm
+langchain-community~=0.2.5
+vllm~=0.5.0
 
 pytest~=8.2.2
 testcontainers~=4.7.1
-pytest-postgresql

@@ -21,11 +21,13 @@ input_parser = RunnableLambda(
 
 def output_handler(generations: dict[str, Generation]) -> dict[str, str]:
     ''' 
-    Parse output of each model into a string, and TODO: save it to the database. 
+    Convert Generation into a string, and TODO: save each Generation to the database. 
+    NOTE: The pre-defined CRUD functions are nice and all, but doesn't it make 
+    more sense to write them in parallel instead of serially? 
+    (i.e. what's the overhead on calling db.commit()? )
     '''
     return {model: generation.text for model, generation in generations.items()}
 
 output_handler = RunnableLambda(output_handler)
 
 chain = input_parser | models | output_handler
-

@@ -1,24 +1,29 @@
-import warnings
+import pytest
 
 from fastapi.testclient import TestClient
-from ..main import app, config
+from ..main import app
+from ..models import (
+    GenerateRequest, SurveyRequest, SurveyResponse,
+    CoCoConfig
+)
 
-client = TestClient(app)
+config = CoCoConfig()
 
-from ..models.Requests import GenerateRequest, SurveyRequest
-from ..models.Responses import SurveyResponse
-from ..models.Types import TriggerType, LanguageType, IDEType
+@pytest.fixture(scope='session')
+def client(): 
+    ''' Run the FastAPI server with its lifespan context '''
+    with TestClient(app) as client:
+        yield client
 
-def test_homepage():
+def test_homepage(client):
     ''' Test whether the homepage is accessible '''
     response = client.get("/")
     assert response.status_code == 200
 
-def test_verification():
-    warnings.warn('TODO: test verification endpoint')
-    pass
+def test_verification(client):
+    raise NotImplementedError('TODO: test the verification endpoint')
 
-def test_survey():
+def test_survey(client):
     ''' 
     Check we can send a SurveyRequest and parse 
     the response as a SurveyResponse. 
@@ -62,7 +67,8 @@ def test_generation_is_not_stored():
     Issue a single completion request, end-to-end
     testing the endpoints, but with the `store` flag set to False
     '''
-    pass
+    raise NotImplementedError('TODO: test that the request is not stored')
+
 
 def test_batch_generation():
     ''' 
@@ -73,7 +79,8 @@ def test_batch_generation():
     TODO: We need florimondmanca/asgi-lifespan to correctly set up the 
     lifespan, according to  https://fastapi.tiangolo.com/advanced/async-tests/
     '''
-    pass
+    raise NotImplementedError('TODO: test that the time taken is less than the sum of each individual request')
+
 
 # TODO: Testing generation API likely needs a separate file 
 # with more exhaustive tests for measuring inference speed 

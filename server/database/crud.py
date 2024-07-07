@@ -3,9 +3,9 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from database import db_models, db_schemas
-from database.db_models import *
-from database.db_schemas import *
+from . import db_models, db_schemas
+from .db_models import *
+from .db_schemas import *
 
 
 # helper functions
