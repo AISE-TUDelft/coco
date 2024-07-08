@@ -1,17 +1,22 @@
+import threading
 import time
+from typing import Union
 
-from fastapi import FastAPI, APIRouter
+import sqlalchemy.orm
+from fastapi import FastAPI, APIRouter, Depends
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from models.Sessions import Session, SessionManager, UserSetting, delete_expired_sessions
 from completion import (chain as completion_chain)
 from database import get_db
+from database.crud import get_user_by_token
 from models import (
     GenerateRequest, VerifyRequest, SurveyRequest, SessionRequest,
-    GenerateResponse, VerifyResponse, SurveyResponse, SessionResponse,
+    GenerateResponse, VerifyResponse, SurveyResponse, SessionResponse, ErrorResponse,
     CoCoConfig
 )
+
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
@@ -27,6 +32,9 @@ async def lifespan(fastapi: FastAPI):
     app.config = CoCoConfig()
     app.chain = completion_chain
     app.server_db_session = get_db(app.config)
+    app.session_manager = SessionManager(app.config.session_length)
+    app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager,), daemon=True)
+    app.cleaning_thread.start()
 
     yield
 
@@ -41,8 +49,18 @@ router = APIRouter(prefix='/api/v3')
 # TODO: Authentication & Session management (also with db?)
 
 @router.post('/session/new')
-async def new_session(session_req: SessionRequest) -> SessionResponse:
-    raise NotImplementedError()
+async def new_session(session_req: SessionRequest) -> Union[SessionResponse | ErrorResponse]:
+    user_id = session_req.user_id
+    user = get_user_by_token(app.server_db_session, user_id)
+    if user is None:
+        return ErrorResponse(error='Invalid user token -> session not created.')
+    else:
+        db_session = get_db(app.config)
+        session = Session(user_id=user_id, project_primary_language=session_req.project_language,
+                          project_ide=session_req.project_ide, user_settings=session_req.user_settings,
+                          db_session=db_session)
+        session_token = app.session_manager.add_session(session)
+        return SessionResponse(session_token=session_token)
 
 
 @router.post('/complete')

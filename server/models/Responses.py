@@ -37,3 +37,12 @@ class SessionResponse(BaseModel):
     This response is meant to be used along with the /session/new endpoint as a response to a SessionRequest.
     """
     session_token: str  # the session id to be used for the next request
+
+
+class ErrorResponse(BaseModel):
+    """
+    The ErrorResponse class is a Pydantic BaseModel class that defines the structure of a response for
+        an error that occurs during the request processing.
+    This response is meant to be used when an error occurs during the request processing.
+    """
+    error: str  # the error message to be displayed to the user
