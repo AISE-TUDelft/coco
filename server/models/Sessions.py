@@ -90,21 +90,26 @@ class SessionManager:
         self.__current_timeslot = 0
         self.__timers = {} # this will be a dict with the key being the timeslot and the value being a list of session ids
         self.__default_session_duration = default_session_duration
+        self.__lock = threading.Lock()
 
         # implement a multithreaded operation occupying one thread for the entire session manager that will
         # remove a session from the session manager if the session has expired
 
     def get_current_timeslot(self) -> int:
-        return self.__current_timeslot
+        with self.__lock:
+            return self.__current_timeslot
 
     def goto_next_timeslot(self):
-        self.__current_timeslot += 1
+        with self.__lock:
+            self.__current_timeslot += 1
 
     def get_timers(self) -> dict:
-        return self.__timers
+        with self.__lock:
+            return self.__timers
 
     def get_sessions(self) -> dict:
-        return self.__sessions
+        with self.__lock:
+            return self.__sessions
 
 
     def add_session(self, session: Session):
@@ -113,38 +118,42 @@ class SessionManager:
         """
         session.set_expiration_timestamp(self.__current_timeslot + self.__default_session_duration)
         session_id = str(hash(session))
-        self.__sessions[session_id] = session
-        if session.get_expiration_timestamp() not in self.__timers:
-            self.__timers[session.get_expiration_timestamp()] = []
-        self.__timers[session.get_expiration_timestamp()].append(session_id)
-        return session_id
+        with self.__lock:
+            self.__sessions[session_id] = session
+            if session.get_expiration_timestamp() not in self.__timers:
+                self.__timers[session.get_expiration_timestamp()] = []
+            self.__timers[session.get_expiration_timestamp()].append(session_id)
+            return session_id
 
     def get_session(self, session_id: str) -> Session | None:
         """
         Get a session from the session manager.
         """
-        return self.__sessions.get(session_id)
+        with self.__lock:
+            return self.__sessions.get(session_id)
 
     def remove_session(self, session_id: str):
         """
         Remove a session from the session manager.
         """
-        session = self.__sessions[session_id]
-        session.get_user_database_session().close() # close the database session so there are no memory leaks
-        del self.__sessions[session_id]
-        self.__timers[session.get_expiration_timestamp()].remove(session_id)
+        with self.__lock:
+            session = self.__sessions[session_id]
+            session.get_user_database_session().close() # close the database session so there are no memory leaks
+            del self.__sessions[session_id]
+            self.__timers[session.get_expiration_timestamp()].remove(session_id)
 
     def update_session_timer(self, session_id: str):
         """
         Update the expiration timestamp for a session.
         """
-        session = self.__sessions[session_id]
-        new_expiration_timestamp = self.__current_timeslot + self.__default_session_duration
-        self.__timers[session.get_expiration_timestamp()].remove(session_id)
-        session.set_expiration_timestamp(new_expiration_timestamp)
-        if session.get_expiration_timestamp() not in self.__timers:
-            self.__timers[session.get_expiration_timestamp()] = []
-        self.__timers[session.get_expiration_timestamp()].append(session_id)
+        with self.__lock:
+            session = self.__sessions[session_id]
+            new_expiration_timestamp = self.__current_timeslot + self.__default_session_duration
+            self.__timers[session.get_expiration_timestamp()].remove(session_id)
+            session.set_expiration_timestamp(new_expiration_timestamp)
+            if session.get_expiration_timestamp() not in self.__timers:
+                self.__timers[session.get_expiration_timestamp()] = []
+            self.__timers[session.get_expiration_timestamp()].append(session_id)
 
 
 def delete_expired_sessions(session_manager: SessionManager):
