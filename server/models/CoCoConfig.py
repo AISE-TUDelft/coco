@@ -12,3 +12,4 @@ class CoCoConfig(BaseSettings):
     survey_link: str = Field(alias='SURVEY_LINK', frozen=True)
     database_url: str = Field(alias='DATABASE_URL', frozen=True)
     test_database_url: str = Field(alias='TEST_DATABASE_URL', frozen=True)
+    session_length: int = Field(alias='SESSION_LENGTH', frozen=True)

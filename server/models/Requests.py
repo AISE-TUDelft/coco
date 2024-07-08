@@ -1,7 +1,7 @@
 import datetime
 
 from pydantic import BaseModel
-from typing import Union
+from typing import Union, Dict
 
 from .Types import TriggerType, LanguageType, IDEType
 
@@ -51,6 +51,20 @@ class VerifyRequest(BaseModel):
     shown_at: Union[dict[str, list[datetime.datetime]], None]
     # the timestamps at which the completions were shown to the user
     ground_truth: Union[str, None]  # the ground truth of the completion
+
+
+class SessionRequest(BaseModel):
+    """
+    The SessionRequest class is a Pydantic BaseModel class that defines the structure of the session request.
+    This request is meant to be used along with the /session/new endpoint.
+    It is used to gain a session token for the user based on the user's personal token
+    """
+    user_id: str # uuid
+    project_language: Union[LanguageType, None]  # see LanguageType in Types.py -> this would be the most used language in the project
+    project_ide: Union[IDEType, None]  # see IDEType in Types.py -> this would be the most used IDE in the project
+    user_settings: Union[Dict, None]  # see UserSettings in Types.py -> this would be the user's settings
+    # TODO: add discuss what we can put in the user settings dictionary -> user preferences like storing requests, etc.
+
 
 
 class SurveyRequest(BaseModel):

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-from ..models.CoCoConfig import CoCoConfig
+from models.CoCoConfig import CoCoConfig
 
 Base = declarative_base()
 

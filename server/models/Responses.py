@@ -28,3 +28,12 @@ class SurveyResponse(BaseModel):
     This response is meant to be used along with the /survey endpoint as a response to a SurveyRequest.
     """
     redirect_url: str  # the url to redirect the user to
+
+
+class SessionResponse(BaseModel):
+    """
+    The SessionResponse class is a Pydantic BaseModel class that defines the structure of a response for
+        the session creation process.
+    This response is meant to be used along with the /session/new endpoint as a response to a SessionRequest.
+    """
+    session_token: str  # the session id to be used for the next request

@@ -15,6 +15,39 @@ With Python `3.11` ([requirement in `vllm`](https://docs.vllm.ai/en/stable/getti
 pip install -r requirements.txt
 ```
 
+## Installation of PostgreSQL (Linux)
+```bash
+sudo apt update
+sudo apt install gnupg2 wget nano
+
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+sudo apt update
+
+sudo apt install postgresql-16 postgresql-contrib-16
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+You can then create a user and database for the project.
+Here, as the default for the project given the .env, files, code, etc., we use `postgres` (default user) as the user and password and `coco` as the actual database name and `coco_test` for the test database.
+
+```bash
+sudo -u postgres psql postgres
+
+>>> \password postgres
+>>> Enter new password: postgres
+>>> Enter it again: postgres
+>>> exit
+
+sudo -u postgres createdb coco
+sudo -u postgres createdb coco_test
+```
+to ensure that the database is created, you can run the database tests in the `tests` directory.
+
+```bash
+pytest tests/test_sqlalchemy_model.py
+```
 #### Running
 To run the server, use 
 
@@ -22,8 +55,6 @@ To run the server, use
 # TODO: update this to pass in the correct survey_link and db_url
 fastapi dev main.py
 ```
-
----
 
 ## Requirements for RAG (patch 1)
 
@@ -39,3 +70,12 @@ cd pgvector
 make
 make install # may need sudo
 ```
+
+#### Running
+To run the server, use 
+
+```bash
+# TODO: update this to pass in the correct survey_link and db_url
+fastapi dev main.py
+```
+
