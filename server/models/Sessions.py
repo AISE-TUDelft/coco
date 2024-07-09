@@ -21,7 +21,7 @@ class UserSetting:
                     f"Expected type {type(base_settings[key])} for key {key}, got {type(self.__settings[key])}"
 
     @staticmethod
-    def __base_settings(self):
+    def __base_settings():
         return {
             "store_completions": False,
             "store_context": False,
@@ -116,7 +116,7 @@ class SessionManager:
         """
         Add a new session to the session manager.
         """
-        session.set_expiration_timestamp(self.__current_timeslot + self.__default_session_duration)
+        session.set_expiration_timestamp(self.__current_timeslot + (self.__default_session_duration // 5))
         session_id = str(hash(session))
         with self.__lock:
             self.__sessions[session_id] = session
@@ -148,7 +148,7 @@ class SessionManager:
         """
         with self.__lock:
             session = self.__sessions[session_id]
-            new_expiration_timestamp = self.__current_timeslot + self.__default_session_duration
+            new_expiration_timestamp = self.__current_timeslot + (self.__default_session_duration // 5)
             self.__timers[session.get_expiration_timestamp()].remove(session_id)
             session.set_expiration_timestamp(new_expiration_timestamp)
             if session.get_expiration_timestamp() not in self.__timers:

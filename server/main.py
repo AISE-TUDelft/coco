@@ -2,13 +2,15 @@ import threading
 import time
 from typing import Union
 
+import logging
+
 import sqlalchemy.orm
 from fastapi import FastAPI, APIRouter, Depends
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine
 from models.Sessions import Session, SessionManager, UserSetting, delete_expired_sessions
-from completion import (chain as completion_chain)
+# from completion import (chain as completion_chain)
 from database import get_db
 from database.crud import get_user_by_token
 from models import (
@@ -30,7 +32,7 @@ async def lifespan(fastapi: FastAPI):
     # I'm using global, instead of declaring these outside the function
     # scope, for clearer code
     app.config = CoCoConfig()
-    app.chain = completion_chain
+    # app.chain = completion_chain
     app.server_db_session = get_db(app.config)
     app.session_manager = SessionManager(app.config.session_length)
     app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager,), daemon=True)
@@ -50,9 +52,14 @@ router = APIRouter(prefix='/api/v3')
 
 @router.post('/session/new')
 async def new_session(session_req: SessionRequest) -> Union[SessionResponse | ErrorResponse]:
+    """
+    Create a new session for the user. The session token is used to authenticate the user in subsequent requests.
+    """
+    logger.log(logging.INFO, f'User {session_req.user_id} requested a new session.')
     user_id = session_req.user_id
     user = get_user_by_token(app.server_db_session, user_id)
     if user is None:
+        logger.log(logging.ERROR, f'Invalid user token {session_req.user_id} - session not created.')
         return ErrorResponse(error='Invalid user token -> session not created.')
     else:
         db_session = get_db(app.config)
@@ -60,6 +67,7 @@ async def new_session(session_req: SessionRequest) -> Union[SessionResponse | Er
                           project_ide=session_req.project_ide, user_settings=session_req.user_settings,
                           db_session=db_session)
         session_token = app.session_manager.add_session(session)
+        logger.log(logging.INFO, f'New session created for user {session_req.user_id} with token {session_token}.')
         return SessionResponse(session_token=session_token)
 
 
@@ -89,6 +97,10 @@ app = FastAPI(
     version     = '0.0.1',
     lifespan    = lifespan,
 )
+
+# logging config
+logging.basicConfig(level=logging.INFO, filename='coco.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 app.include_router(router)
 
