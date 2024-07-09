@@ -1,3 +1,4 @@
+import datetime
 import threading
 import time
 from typing import Union
@@ -5,7 +6,7 @@ from typing import Union
 import logging
 
 import sqlalchemy.orm
-from fastapi import FastAPI, APIRouter, Depends
+from fastapi import FastAPI, APIRouter, Depends, Request
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine
@@ -85,6 +86,10 @@ async def lifespan(app: FastAPI):
     # cache some of the tables in memory for faster access
     cache_tables(app, app.server_db_session)
 
+    # keep track of how many times an IP address tries to create a session and fails
+    app.failed_session_attempts = {}
+    app.blacklisted_ips = set()
+
     app.session_manager = SessionManager(app.config.session_length)
     app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager,), daemon=True)
     app.cleaning_thread.start()
@@ -99,17 +104,39 @@ router = APIRouter(prefix='/api/v3')
 # TODO: Try streaming to reduce latency
 # TODO: Rate limiting 
 # TODO: Can squeeze out a little more performance with https://fastapi.tiangolo.com/advanced/custom-response/#use-orjsonresponse
-# TODO: Authentication & Session management (also with db?)
 
 @router.post('/session/new')
-async def new_session(session_req: SessionRequest) -> Union[SessionResponse | ErrorResponse]:
+async def new_session(session_req: SessionRequest, request: Request) -> Union[SessionResponse | ErrorResponse]:
     """
     Create a new session for the user. The session token is used to authenticate the user in subsequent requests.
     """
-    logger.log(logging.INFO, f'User {session_req.user_id} requested a new session.')
+    # get the request IP address
+    ip = request.client.host
+    if ip in app.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> session not created.')
+        return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
+    logger.log(logging.INFO, f'User {session_req.user_id} requested a new session from version '
+                             f'{session_req.version} of the plugin for {session_req.project_ide}.')
     user_id = session_req.user_id
-    user = get_user_by_token(app.server_db_session, user_id)
+    try:
+        if existing_session := app.session_manager.get_session_id_by_user_token(user_id):
+            logger.log(logging.ERROR, f'User {user_id} already has a session with session id {existing_session} -> session not created.')
+            return SessionResponse(session_id=existing_session)
+        user = get_user_by_token(app.server_db_session, user_id)
+    except Exception as e:
+        logger.log(logging.ERROR, f'Error getting user by token: {e}')
+        return ErrorResponse(error='Error getting user by token -> session not created.')
+
     if user is None:
+        # keep track of IP addresses and how many times they try to create a session and fail
+        if ip in app.failed_session_attempts:
+            app.failed_session_attempts[ip] += [datetime.datetime.now()]
+        else:
+            app.failed_session_attempts[ip] = [datetime.datetime.now()]
+        if len(app.failed_session_attempts[ip]) >= app.config.max_failed_session_attempts:
+            app.blacklisted_ips.add(ip)
+            logger.log(logging.ERROR, f'IP address {ip} has been blacklisted -> session not created.')
+            return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
         logger.log(logging.ERROR, f'Invalid user token {session_req.user_id} - session not created.')
         return ErrorResponse(error='Invalid user token -> session not created.')
     else:
@@ -123,8 +150,12 @@ async def new_session(session_req: SessionRequest) -> Union[SessionResponse | Er
 
 
 @router.post('/complete')
-async def autocomplete_v3(gen_req: GenerateRequest) -> GenerateResponse:
-    ''' Endpoint to generate a dict of completions; {model_name: completion} '''
+async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> GenerateResponse:
+    """ Endpoint to generate a dict of completions; {model_name: completion} """
+    ip = request.client.host
+    if ip in app.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no completions generated.')
+        return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     session = app.session_manager.get_session(gen_req.session_id)
     logger.log(logging.INFO, f'User {gen_req.session_id} requested completions with completion id {gen_req.request_id}.')
     if session is None:
@@ -141,12 +172,22 @@ async def autocomplete_v3(gen_req: GenerateRequest) -> GenerateResponse:
             return ErrorResponse(error='Error generating completions.')
 
 @router.post('/verify')
-async def verify_v3(verify_req: VerifyRequest) -> VerifyResponse:
+async def verify_v3(verify_req: VerifyRequest, request: Request) -> VerifyResponse:
+    """ Endpoint to verify a completion """
+    ip = request.client.host
+    if ip in app.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no verification done.')
+        return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     return VerifyResponse(success=True)
 
 
 @router.post('/survey')
-async def survey(survey_req: SurveyRequest) -> SurveyResponse:
+async def survey(survey_req: SurveyRequest, request: Request) -> SurveyResponse:
+    """ Endpoint to redirect to a survey """
+    ip = request.client.host
+    if ip in app.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no survey redirection.')
+        return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     redirect_url = app.config.survey_link.format(user_id=survey_req.user_id)
     return SurveyResponse(redirect_url=redirect_url)
 

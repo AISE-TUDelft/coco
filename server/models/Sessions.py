@@ -92,6 +92,7 @@ class SessionManager:
         self.__current_timeslot = 0
         self.__timers = {} # this will be a dict with the key being the timeslot and the value being a list of session ids
         self.__default_session_duration = default_session_duration
+        self.__user_to_session = {}
         self.__lock = threading.Lock()
 
         # implement a multithreaded operation occupying one thread for the entire session manager that will
@@ -113,6 +114,13 @@ class SessionManager:
         with self.__lock:
             return self.__sessions
 
+    def get_session_id_by_user_token(self, user_token: str) -> str | None:
+        with self.__lock:
+            return self.__user_to_session.get(user_token)
+
+    def get_user_to_session(self) -> dict:
+        with self.__lock:
+            return self.__user_to_session
 
     def add_session(self, session: Session):
         """
@@ -125,6 +133,7 @@ class SessionManager:
             if session.get_expiration_timestamp() not in self.__timers:
                 self.__timers[session.get_expiration_timestamp()] = []
             self.__timers[session.get_expiration_timestamp()].append(session_id)
+            self.__user_to_session[session.get_user_id()] = session_id
             return session_id
 
     def get_session(self, session_id: str) -> Session | None:
@@ -141,6 +150,7 @@ class SessionManager:
         with self.__lock:
             session = self.__sessions[session_id]
             session.get_user_database_session().close() # close the database session so there are no memory leaks
+            del self.__user_to_session[session.get_user_id()]
             del self.__sessions[session_id]
             self.__timers[session.get_expiration_timestamp()].remove(session_id)
 
@@ -166,6 +176,7 @@ def delete_expired_sessions(session_manager: SessionManager):
                 session = session_manager.get_sessions()[session_id]
                 if session.get_expiration_timestamp() <= session_manager.get_current_timeslot():
                     session.get_user_database_session().close()  # close the database session so there are no memory leaks
+                    del session_manager.get_user_to_session()[session.get_user_id()]
                     del session_manager.get_sessions()[session_id]
                     session_manager.get_timers()[session_manager.get_current_timeslot()].remove(session_id)
         session_manager.goto_next_timeslot()

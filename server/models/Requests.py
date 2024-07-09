@@ -54,11 +54,10 @@ class SessionRequest(BaseModel):
     It is used to gain a session token for the user based on the user's personal token
     """
     user_id: str # uuid
+    version: str  # the version of the extension
     project_language: Union[LanguageType, None]  # see LanguageType in Types.py -> this would be the most used language in the project
     project_ide: Union[IDEType, None]  # see IDEType in Types.py -> this would be the most used IDE in the project
     user_settings: Union[Dict, None]  # see UserSettings in Types.py -> this would be the user's settings
-    version: str  # the version of the extension
-    ide: IDEType  # see IDEType in Types.py
 
 
 

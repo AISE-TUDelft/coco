@@ -7,19 +7,15 @@ from . import db_models, db_schemas
 from .db_models import *
 from .db_schemas import *
 
+import re
+
 
 # helper functions
 def is_valid_uuid(uuid: str) -> bool:
     if not uuid:
         return False
-    elif isinstance(uuid, UUID):
-        return True
-    else:
-        try:
-            UUID(uuid)
-            return True
-        except ValueError:
-            return False
+    uuidv4_pattern = re.compile(r'\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-4[0-9a-fA-F]{3}\-[89aAbB][0-9a-fA-F]{3}\-[0-9a-fA-F]{12}\b')
+    return bool(uuidv4_pattern.fullmatch(uuid))
 
 
 # READ operation
