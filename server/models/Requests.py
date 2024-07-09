@@ -11,29 +11,23 @@ class GenerateRequest(BaseModel):
     The GenerateRequest class is a Pydantic BaseModel class that defines the structure of a request for code generation.
     This request is meant to be used along with the /generate endpoint.
     """
-    user_id: str  # uuid
+    session_id: str  # uuid
     request_id: str  # uuid
     prefix: str  # the context before the point of generation
     suffix: str  # the context after the point of generation
     trigger: TriggerType  # see TriggerType in Types.py
     language: LanguageType  # see LanguageType in Types.py
-    ide: IDEType  # see IDEType in Types.py
-    version: str  # the version of the extension
-    store: bool  # whether to store the request in the database
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "user_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "session_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
                     "request_id": "123bbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                     "prefix": "import numpy as np\n\ndef main(): \n    items = [1,2,3]\n\n    # convert items to numpy array \n    arr = ",
                     "suffix": "\n\n    # get the data type\n    print(arr.dtype)",
                     "trigger": "auto",
-                    "language": "python",
-                    "ide": "VSCode",
-                    "version": "0.0.1",
-                    "store": "true"
+                    "language": "python"
                 }
             ]
         }
@@ -63,7 +57,8 @@ class SessionRequest(BaseModel):
     project_language: Union[LanguageType, None]  # see LanguageType in Types.py -> this would be the most used language in the project
     project_ide: Union[IDEType, None]  # see IDEType in Types.py -> this would be the most used IDE in the project
     user_settings: Union[Dict, None]  # see UserSettings in Types.py -> this would be the user's settings
-    # TODO: add discuss what we can put in the user settings dictionary -> user preferences like storing requests, etc.
+    version: str  # the version of the extension
+    ide: IDEType  # see IDEType in Types.py
 
 
 
@@ -73,13 +68,13 @@ class SurveyRequest(BaseModel):
     This request is meant to be used along with the /survey endpoint.
     It is used to gain input about the user's experience with the extension.
     """
-    user_id: str  # uuid
+    session_id: str  # uuid
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "user_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                    "session_id": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
                 }
             ]
         }

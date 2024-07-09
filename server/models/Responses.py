@@ -36,7 +36,7 @@ class SessionResponse(BaseModel):
         the session creation process.
     This response is meant to be used along with the /session/new endpoint as a response to a SessionRequest.
     """
-    session_token: str  # the session id to be used for the next request
+    session_id: str  # the session id to be used for the next request
 
 
 class ErrorResponse(BaseModel):

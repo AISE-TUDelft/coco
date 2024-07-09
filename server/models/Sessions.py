@@ -31,13 +31,15 @@ class UserSetting:
 
 class Session:
     def __init__(self, user_id: str, project_primary_language: LanguageType = None,
-                 project_ide: IDEType = None, user_settings: dict = None, db_session: sqlalchemy.orm.Session = None):
+                 project_ide: IDEType = None, user_settings: dict = None, db_session: sqlalchemy.orm.Session = None,
+                 project_coco_version: str = None):
         """
         Initialize a new session.
         """
         self.__user_id = user_id
         self.__project_primary_language = project_primary_language
         self.__project_ide = project_ide
+        self.__coco_version = project_coco_version
         self.__user_settings = UserSetting(user_settings)
         self.__expiration_timestamp = None
         self.__user_database_session = db_session
