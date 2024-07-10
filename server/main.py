@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
 
     # I'm using global, instead of declaring these outside the function
     # scope, for clearer code
-    app.config = CoCoConfig()
+    app.config = config
     # app.chain = completion_chain
     app.server_db_session = get_db(app.config)
 
@@ -216,6 +216,7 @@ async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse |
     redirect_url = app.config.survey_link.format(user_id=user_id)
     return SurveyResponse(redirect_url=redirect_url)
 
+config = CoCoConfig()
 app = FastAPI(
     title       = 'CoCo API',
     description = 'RESTful API that provides code completion services to the CoCo IDE plugin.',

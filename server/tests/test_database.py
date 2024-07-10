@@ -2,15 +2,17 @@
 # adding pytest-postgresql uses a different version of psychopg (1 or 2?)
 
 import uuid
+import os
 from datetime import datetime, timedelta
 import pytest
 import sqlalchemy
+from pydantic_settings import SettingsConfigDict
 from pytest_postgresql import factories
 from pytest_postgresql.janitor import DatabaseJanitor
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker, Session
 
-from ..database.crud import (create_user, get_user_by_token, add_model,
+from database.crud import (create_user, get_user_by_token, add_model,
                            get_model_by_name, get_model_by_id, add_plugin_version, get_plugin_version_by_id,
                            get_plugin_versions_by_description_containing, get_plugin_versions_by_ide_type,
                            get_plugin_versions_by_name_containing, get_all_plugin_versions, add_telemetry,
@@ -32,10 +34,11 @@ from ..database.crud import (create_user, get_user_by_token, add_model,
 
 from testcontainers.postgres import PostgresContainer
 
-from ..database.db_schemas import *
-from ..database.db_models import *
+from database.db_schemas import *
+from database.db_models import *
 
-from ..models import CoCoConfig
+from models.CoCoConfig import CoCoConfig
+CoCoConfig.model_config["env_file"] = "../.env"
 config = CoCoConfig()
 
 
@@ -127,7 +130,7 @@ def create_fresh_database(engine):
     Base.metadata.drop_all(engine)
     # create all tables from init.sql
     with engine.connect() as connection:
-        connection.execute(text(open('./init.sql').read()))
+        connection.execute(text(open('../database/init.sql').read()))
     engine.dispose()
 
 

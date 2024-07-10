@@ -40,7 +40,8 @@ class QueryCreate(QueryBase):
 # Model Name
 class ModelNameBase(BaseModel):
     model_name: str
-
+    class Config:
+        protected_namespaces = ()
 
 class ModelName(ModelNameBase):
     model_id: int = Field(..., alias="id")
