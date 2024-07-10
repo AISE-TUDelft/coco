@@ -14,3 +14,4 @@ class CoCoConfig(BaseSettings):
     test_database_url: str = Field(alias='TEST_DATABASE_URL', frozen=True)
     session_length: int = Field(alias='SESSION_LENGTH', frozen=True)
     max_failed_session_attempts: int = Field(alias='MAX_FAILED_SESSION_ATTEMPTS', frozen=True)
+    server_version_id: int = Field(alias='SERVER_VERSION_ID', frozen=True)

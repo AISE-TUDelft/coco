@@ -3,7 +3,10 @@ import time
 
 import sqlalchemy.orm
 
+from models import GenerateRequest, VerifyRequest
 from models.Types import LanguageType, IDEType
+from models.Lifecycle import ActiveRequest, ModelCompletionDetails
+
 
 class UserSetting:
     """
@@ -46,8 +49,47 @@ class Session:
         self.__user_active_requests = {}
         self.__user_request_count = 0
 
+    def add_active_request(self, request_id: str, request: GenerateRequest, completions: dict, time_taken: float):
+        self.__user_active_requests[request_id] = ActiveRequest.model_validate({
+            "request": request,
+            "completions": {key: {"completion": completions[key],
+                                  "shown_at": [],
+                                  "accepted": False}
+                            for key in completions.keys()},
+            "time_taken": round(time_taken * 1000), # convert to round milliseconds
+            "ground_truth": []
+        })
+
+    def get_active_request(self, request_id: str) -> dict:
+        return self.__user_active_requests[request_id]
+
+    def update_active_request(self, request_id: str, verify_req: VerifyRequest):
+        # update whether a given model was chosen
+        if verify_req.chosen_model is not None:
+            self.__user_active_requests[request_id]["completions"][verify_req.chosen_model]["accepted"] = True
+
+        # update the times at which the completions were shown
+        if verify_req.shown_at is not None:
+            for key in verify_req.shown_at.keys():
+                self.__user_active_requests[request_id]["completions"][key]["shown_at"].append(verify_req.shown_at[key])
+
+        # update the ground truth completions
+        if verify_req.ground_truth is not None:
+            self.__user_active_requests[request_id]["ground_truth"].append(verify_req.ground_truth)
+
+    def dump_user_active_requests(self) -> None:
+        """
+        A function to dump the active requests of a user to the database.
+        """
+        for request_id in self.__user_active_requests.keys():
+            request = self.__user_active_requests[request_id]
+            add_active_request_to_db(self.__user_database_session, request, self)
+
     def get_user_id(self) -> str:
         return self.__user_id
+
+    def get_coco_version(self) -> str:
+        return self.__coco_version
 
     def get_project_primary_language(self) -> LanguageType | None:
         return self.__project_primary_language
@@ -149,6 +191,7 @@ class SessionManager:
         """
         with self.__lock:
             session = self.__sessions[session_id]
+            session.dump_user_active_requests()
             session.get_user_database_session().close() # close the database session so there are no memory leaks
             del self.__user_to_session[session.get_user_id()]
             del self.__sessions[session_id]

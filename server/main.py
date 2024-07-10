@@ -148,15 +148,32 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
         logger.log(logging.INFO, f'New session created for user {session_req.user_id} with token {session_id}.')
         return SessionResponse(session_id=session_id)
 
+@router.post('/session/end')
+async def end_session(session_req: SessionRequest, request: Request) -> None | ErrorResponse:
+    """ Endpoint to end a session """
+    ip = request.client.host
+    if ip in app.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> session not ended.')
+        return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
+    session = app.session_manager.get_session(session_req.session_id)
+    if session is None:
+        logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> session not ended.')
+        return ErrorResponse(error='Invalid session token -> session not ended.')
+    app.session_manager.remove_session(session_req.session_id)
+    logger.log(logging.INFO, f'Session {session_req.session_id} ended.')
+    return None
 
 @router.post('/complete')
-async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> GenerateResponse:
+async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> ErrorResponse | GenerateResponse:
     """ Endpoint to generate a dict of completions; {model_name: completion} """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no completions generated.')
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     session = app.session_manager.get_session(gen_req.session_id)
+    if session is None:
+        logger.log(logging.ERROR, f'Invalid session token {gen_req.session_id} -> no completions generated.')
+        return ErrorResponse(error='Invalid session token -> no completions generated.')
     logger.log(logging.INFO, f'User {gen_req.session_id} requested completions with completion id {gen_req.request_id}.')
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {gen_req.session_id} -> no completions generated.')
@@ -166,29 +183,37 @@ async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> Generat
             t = time.time()
             completions : dict[str, str] = app.chain.invoke(gen_req)
             t = time.time() - t # seconds (float)
+            logger.log(logging.INFO, f'Completions generated for request with id {gen_req.request_id} in {t} seconds.')
+            session.add_active_request(gen_req.request_id, completions, t)
             return GenerateResponse(time=t, completions=completions)
         except Exception as e:
             logger.log(logging.ERROR, f'Error generating completions: {e}')
             return ErrorResponse(error='Error generating completions.')
 
 @router.post('/verify')
-async def verify_v3(verify_req: VerifyRequest, request: Request) -> VerifyResponse:
+async def verify_v3(verify_req: VerifyRequest, request: Request) -> ErrorResponse | VerifyResponse:
     """ Endpoint to verify a completion """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no verification done.')
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
+    session = app.session_manager.get_session(verify_req.session_id)
+    if session is None:
+        logger.log(logging.ERROR, f'Invalid session token {verify_req.session_id} -> no verification done.')
+        return ErrorResponse(error='Invalid session token -> no verification done.')
+    session.update_active_request(verify_req.verify_token, verify_req) # update the active request with the verification
     return VerifyResponse(success=True)
 
 
 @router.post('/survey')
-async def survey(survey_req: SurveyRequest, request: Request) -> SurveyResponse:
+async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse | SurveyResponse:
     """ Endpoint to redirect to a survey """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no survey redirection.')
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    redirect_url = app.config.survey_link.format(user_id=survey_req.user_id)
+    user_id = app.session_manager.get_session(survey_req.session_id).user_id
+    redirect_url = app.config.survey_link.format(user_id=user_id)
     return SurveyResponse(redirect_url=redirect_url)
 
 app = FastAPI(
