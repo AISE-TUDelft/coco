@@ -159,7 +159,7 @@ async def end_session(session_req: SessionRequest, request: Request) -> None | E
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> session not ended.')
         return ErrorResponse(error='Invalid session token -> session not ended.')
-    app.session_manager.remove_session(session_req.session_id)
+    app.session_manager.remove_session(session_req.session_id, app)
     logger.log(logging.INFO, f'Session {session_req.session_id} ended.')
     return None
 

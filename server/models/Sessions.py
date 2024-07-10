@@ -2,7 +2,9 @@ import threading
 import time
 
 import sqlalchemy.orm
+from fastapi import FastAPI
 
+from database.app_to_db import add_active_request_to_db
 from models import GenerateRequest, VerifyRequest
 from models.Types import LanguageType, IDEType
 from models.Lifecycle import ActiveRequest, ModelCompletionDetails
@@ -15,9 +17,11 @@ class UserSetting:
 
     def __init__(self, settings: dict):
         self.__settings = settings
+        if self.__settings is None:
+            self.__settings = {}
         base_settings = self.__base_settings()
         for key in base_settings.keys():
-            if key not in self.__settings:
+            if key not in self.__settings.keys():
                 self.__settings[key] = self.__base_settings()[key]
             else:
                 assert type(self.__settings[key]) == type(base_settings[key]), \
@@ -77,13 +81,13 @@ class Session:
         if verify_req.ground_truth is not None:
             self.__user_active_requests[request_id]["ground_truth"].append(verify_req.ground_truth)
 
-    def dump_user_active_requests(self) -> None:
+    def dump_user_active_requests(self, app: FastAPI) -> None:
         """
         A function to dump the active requests of a user to the database.
         """
         for request_id in self.__user_active_requests.keys():
             request = self.__user_active_requests[request_id]
-            add_active_request_to_db(self.__user_database_session, request, self)
+            add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app)
 
     def get_user_id(self) -> str:
         return self.__user_id
@@ -185,13 +189,13 @@ class SessionManager:
         with self.__lock:
             return self.__sessions.get(session_id)
 
-    def remove_session(self, session_id: str):
+    def remove_session(self, session_id: str, app: FastAPI):
         """
         Remove a session from the session manager.
         """
         with self.__lock:
             session = self.__sessions[session_id]
-            session.dump_user_active_requests()
+            session.dump_user_active_requests(app)
             session.get_user_database_session().close() # close the database session so there are no memory leaks
             del self.__user_to_session[session.get_user_id()]
             del self.__sessions[session_id]

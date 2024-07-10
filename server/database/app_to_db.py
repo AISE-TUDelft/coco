@@ -1,19 +1,18 @@
+from logging import Logger
 from typing import List
+
+from fastapi import FastAPI
 
 from database.crud import add_context, add_query, add_telemetry, add_generation, add_ground_truth
 from database.db_schemas import ContextCreate, QueryCreate, TelemetryCreate, HadGenerationCreate, GroundTruthCreate
 
 from models.Lifecycle import ActiveRequest, ModelCompletionDetails
-from models.Sessions import Session as SessionModel
 
 from sqlalchemy.orm import Session as DBSession
 
 from uuid import uuid4
 
-from main import app, logger
-
-
-def get_context_from_request(request: ActiveRequest, user_session: SessionModel) -> ContextCreate:
+def get_context_from_request(request: ActiveRequest, coco_version: str, app: FastAPI) -> ContextCreate:
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a ContextCreate object (see database/db_schemas.py).
     """
@@ -22,9 +21,9 @@ def get_context_from_request(request: ActiveRequest, user_session: SessionModel)
     suffix = actual_generate_request.suffix
     language_id = app.languages[actual_generate_request.language]
     trigger_id = app.trigger_types[actual_generate_request.trigger]
-    version_id = app.plugin_versions[user_session.get_coco_version()]
+    version_id = app.plugin_versions[coco_version]
     return ContextCreate(
-        context_id=uuid4(),
+        context_id=str(uuid4()),
         prefix=prefix,
         suffix=suffix,
         language_id=language_id,
@@ -39,21 +38,21 @@ def get_telemetry_from_request(request: ActiveRequest) -> TelemetryCreate:
     """
     actual_telemetry = request.request.telemetry
     return TelemetryCreate(
-        telemetry_id=uuid4(),
+        telemetry_id=str(uuid4()),
         time_since_last_completion=actual_telemetry.time_since_last_completion,
         typing_speed=actual_telemetry.typing_speed,
-        document_char_length=actual_telemetry.document_char_length,
+        document_char_length=actual_telemetry.document_length,
         relative_document_position=actual_telemetry.cursor_relative_position
     )
 
 
 def get_query_from_request(request: ActiveRequest, context: ContextCreate,
-                           telemetry: TelemetryCreate, user_session: SessionModel) -> QueryCreate:
+                           telemetry: TelemetryCreate, user_id: str, app: FastAPI) -> QueryCreate:
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a QueryCreate object (see database/db_schemas.py).
     """
-    query_id = ActiveRequest.request.request_id
-    user_id = user_session.get_user_id()
+    query_id = request.request.request_id
+    user_id = user_id
     telemetry_id = telemetry.telemetry_id
     context_id = context.context_id
     total_serving_time= request.time_taken
@@ -65,7 +64,7 @@ def get_query_from_request(request: ActiveRequest, context: ContextCreate,
         telemetry_id=telemetry_id,
         context_id=context_id,
         total_serving_time=total_serving_time,
-        timestamp=timestamp,
+        timestamp=str(timestamp),
         server_version_id=server_version_id
     )
 
@@ -75,17 +74,17 @@ def get_ground_truths_from_request(request: ActiveRequest, query: QueryCreate) -
     Go from an ActiveRequest object (see models/Lifecycle.py) to a list of GroundTruthCreate objects (see database/db_schemas.py).
     """
     ground_truths = []
-    if request.request.ground_truth is not None:
-        for gt in request.request.ground_truth:
+    if request.ground_truth is not None:
+        for gt in request.ground_truth:
             ground_truths.append(GroundTruthCreate(
                 query_id=query.query_id,
-                truth_timestamp=gt[0],
+                truth_timestamp=str(gt[0]),
                 ground_truth=gt[1]
             ))
     return ground_truths
 
 
-def get_generation_from_request(request: ActiveRequest, query: QueryCreate) -> List[HadGenerationCreate]:
+def get_generation_from_request(request: ActiveRequest, query: QueryCreate, app: FastAPI) -> List[HadGenerationCreate]:
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a HadGenerationCreate object (see database/db_schemas.py).
     """
@@ -100,19 +99,21 @@ def get_generation_from_request(request: ActiveRequest, query: QueryCreate) -> L
                 shown_at=[str(x) for x in request.completions[completion_model].shown_at],
                 was_accepted=request.completions[completion_model].accepted,
                 confidence=1.0,
-                logprobs=[0.2, 0.3, 0.4, 0.1]
+                logprobs=[0.2, 0.3, 0.4, 0.1]  # TODO: Fix this -> this is simply a placeholder for the time being
             ))
 
     return generations
 
 
-def add_active_request_to_db(db_session: DBSession, request: ActiveRequest, user_session: SessionModel):
+def add_active_request_to_db(db_session: DBSession, request: ActiveRequest, user_id: str, server_version_id: str,
+                             app: FastAPI, logger: Logger):
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a database entry and add it to the database.
     """
-    logger.log(f"Adding active request with id {request.request.request_id} to DB for user {user_session.get_user_id()}")
+
+    logger.log(f"Adding active request with id {request.request.request_id} to DB for user {user_id}")
     try:
-        context = get_context_from_request(request, user_session)
+        context = get_context_from_request(request, server_version_id, app)
         add_context(db_session, context)
         logger.log(f"Added context with id {context.context_id} to DB for active request with id {request.request.request_id}")
 
@@ -121,11 +122,11 @@ def add_active_request_to_db(db_session: DBSession, request: ActiveRequest, user
         logger.log(f"Added telemetry with id {telemetry.telemetry_id} to DB for active request with id {request.request.request_id}")
 
 
-        query = get_query_from_request(request, context, telemetry, user_session)
+        query = get_query_from_request(request, context, telemetry, user_id, app)
         add_query(db_session, query)
         logger.log(f"Added query with id {query.query_id} to DB for active request with id {request.request.request_id}")
 
-        generations = get_generation_from_request(request, query)
+        generations = get_generation_from_request(request, query, app)
         for generation in generations:
             add_generation(db_session, generation)
         logger.log(f"Added {len(generations)} total generations to DB for active request with id {request.request.request_id}")

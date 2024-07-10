@@ -1,4 +1,4 @@
-from . import Base
+from database import Base
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, ForeignKey, DateTime,
     Float, create_engine, UniqueConstraint, Index, ARRAY, BIGINT

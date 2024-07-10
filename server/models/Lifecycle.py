@@ -1,7 +1,7 @@
 import datetime
 
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 from models import GenerateRequest
 
@@ -16,4 +16,4 @@ class ActiveRequest(BaseModel):
     request: GenerateRequest
     completions: Dict[str, ModelCompletionDetails]
     time_taken: int
-    ground_truth: List[str] = []
+    ground_truth: List[Tuple[datetime.datetime, str]] = []

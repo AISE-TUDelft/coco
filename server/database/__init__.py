@@ -1,9 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
+from .db import Base
 
 from models.CoCoConfig import CoCoConfig
-
-Base = declarative_base()
 
 def get_db(config: CoCoConfig):
 

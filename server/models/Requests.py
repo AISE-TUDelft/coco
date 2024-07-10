@@ -40,7 +40,14 @@ class GenerateRequest(BaseModel):
                     "prefix": "import numpy as np\n\ndef main(): \n    items = [1,2,3]\n\n    # convert items to numpy array \n    arr = ",
                     "suffix": "\n\n    # get the data type\n    print(arr.dtype)",
                     "trigger": "auto",
-                    "language": "python"
+                    "language": "python",
+                    "telemetry": {
+                        "time_since_last_completion": 1000,
+                        "typing_speed": 100,
+                        "document_length": 1000,
+                        "cursor_relative_position": 0.5
+                    },
+                    "timestamp": "2021-08-01T12:00:00"
                 }
             ]
         }
