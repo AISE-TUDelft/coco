@@ -1,3 +1,4 @@
+import datetime
 import threading
 import time
 
@@ -48,6 +49,7 @@ class Session:
         self.__project_ide = project_ide
         self.__coco_version = project_coco_version
         self.__user_settings = UserSetting(user_settings)
+        self.__session_since = datetime.datetime.now()
         self.__expiration_timestamp = None
         self.__user_database_session = db_session
         self.__user_active_requests = {}
@@ -63,6 +65,9 @@ class Session:
             "time_taken": round(time_taken * 1000), # convert to round milliseconds
             "ground_truth": []
         })
+
+    def get_session_since(self) -> datetime.datetime:
+        return self.__session_since
 
     def get_active_request(self, request_id: str) -> dict:
         return self.__user_active_requests[request_id]

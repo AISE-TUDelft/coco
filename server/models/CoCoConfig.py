@@ -15,3 +15,4 @@ class CoCoConfig(BaseSettings):
     session_length: int = Field(alias='SESSION_LENGTH', frozen=True)
     max_failed_session_attempts: int = Field(alias='MAX_FAILED_SESSION_ATTEMPTS', frozen=True)
     server_version_id: int = Field(alias='SERVER_VERSION_ID', frozen=True)
+    max_request_rate: int = Field(alias='MAX_REQUEST_RATE', frozen=True) # maximum amount of requests that are allowed per hour per user -> 1000 would indicate 1000 requests per hour

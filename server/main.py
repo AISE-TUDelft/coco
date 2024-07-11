@@ -68,6 +68,20 @@ def cache_tables(app: FastAPI, server_db_session: sqlalchemy.orm.Session):
         raise e
 
 
+def request_in_limit(app: FastAPI, session: Session):
+    """
+    A function which checks if the user has exceeded the request limit.
+    """
+    time_diff = (datetime.datetime.now() - session.get_session_since()).total_seconds()
+    if time_diff < 300: # 5 minutes
+        return True
+    time_diff = time_diff / 3600 # convert to hours
+    if ((session.get_user_request_count() + 1) / time_diff) > app.config.max_request_rate:
+        logger.log(logging.ERROR, f'User {session.user_id} has exceeded the request limit of {app.config.max_user_requests} -> no completions generated.')
+        return False
+    return True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -180,11 +194,14 @@ async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> ErrorRe
         return ErrorResponse(error='Invalid session token -> no completions generated.')
     else:
         try:
+            if not request_in_limit(app, session):
+                return ErrorResponse(error='User has exceeded the request limit -> no completions generated.')
             t = time.time()
             completions : dict[str, str] = app.chain.invoke(gen_req)
             t = time.time() - t # seconds (float)
             logger.log(logging.INFO, f'Completions generated for request with id {gen_req.request_id} in {t} seconds.')
             session.add_active_request(gen_req.request_id, completions, t)
+            session.increment_user_request_count()
             return GenerateResponse(time=t, completions=completions)
         except Exception as e:
             logger.log(logging.ERROR, f'Error generating completions: {e}')
@@ -192,7 +209,10 @@ async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> ErrorRe
 
 @router.post('/verify')
 async def verify_v3(verify_req: VerifyRequest, request: Request) -> ErrorResponse | VerifyResponse:
-    """ Endpoint to verify a completion """
+    """
+    Endpoint to verify a completion
+    Note -> verification of the completion can be still carried out even if the request limit has been exceeded.
+    """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no verification done.')
@@ -207,7 +227,10 @@ async def verify_v3(verify_req: VerifyRequest, request: Request) -> ErrorRespons
 
 @router.post('/survey')
 async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse | SurveyResponse:
-    """ Endpoint to redirect to a survey """
+    """
+    Endpoint to redirect to a survey
+    Note -> survey redirection can be still carried out even if the request limit has been exceeded.
+    """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no survey redirection.')
