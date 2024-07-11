@@ -1,4 +1,5 @@
 import datetime
+import json
 import threading
 import time
 from typing import Union
@@ -6,7 +7,7 @@ from typing import Union
 import logging
 
 import sqlalchemy.orm
-from fastapi import FastAPI, APIRouter, Depends, Request
+from fastapi import FastAPI, APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine
@@ -113,11 +114,13 @@ async def lifespan(app: FastAPI):
     # TODO: potential generation model cleanup here
     pass
 
+# --------------------- Normal API Endpoints ---------------------
+
 router = APIRouter(prefix='/api/v3')
 
 # TODO: Try streaming to reduce latency
-# TODO: Rate limiting 
 # TODO: Can squeeze out a little more performance with https://fastapi.tiangolo.com/advanced/custom-response/#use-orjsonresponse
+
 
 @router.post('/session/new')
 async def new_session(session_req: SessionRequest, request: Request) -> Union[SessionResponse | ErrorResponse]:
@@ -171,8 +174,8 @@ async def end_session(session_req: SessionRequest, request: Request) -> None | E
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     session = app.session_manager.get_session(session_req.session_id)
     if session is None:
-        logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> session not ended.')
-        return ErrorResponse(error='Invalid session token -> session not ended.')
+        logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> No session to end.')
+        return ErrorResponse(error='Invalid session token -> No session to end.')
     app.session_manager.remove_session(session_req.session_id, app)
     logger.log(logging.INFO, f'Session {session_req.session_id} ended.')
     return None
@@ -221,6 +224,11 @@ async def verify_v3(verify_req: VerifyRequest, request: Request) -> ErrorRespons
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {verify_req.session_id} -> no verification done.')
         return ErrorResponse(error='Invalid session token -> no verification done.')
+    # TODO: update this implementation to be more robust after the completion of the MVPs for the server
+    # Details -> the current implementation will fail given that a verify request is sent for a session that has
+    # ended or requests that have already been stored to the DB. It might be the case that we would want to do a
+    # more longitudinal study of the completions generated and verified and thus we would want to store all the
+    # completions generated and verified in the DB -> This would necessitate a change in the current implementation
     session.update_active_request(verify_req.verify_token, verify_req) # update the active request with the verification
     return VerifyResponse(success=True)
 
@@ -239,6 +247,87 @@ async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse |
     redirect_url = app.config.survey_link.format(user_id=user_id)
     return SurveyResponse(redirect_url=redirect_url)
 
+# --------------------- WebSocket Endpoints ---------------------
+class WebSocketManager:
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, session_id: str):
+        await websocket.accept()
+        self.active_connections[session_id] = websocket
+
+    def disconnect(self, session_id: str):
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+
+    async def send_message(self, session_id: str, message: str):
+        if session_id in self.active_connections:
+            await self.active_connections[session_id].send_text(message)
+
+manager = WebSocketManager()
+
+@router.websocket("/ws/session/new")
+async def websocket_new_session(websocket: WebSocket):
+    await manager.connect(websocket, "new_session")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            session_req = SessionRequest(**json.loads(data))
+            response = await new_session(session_req)
+            await manager.send_message("new_session", json.dumps(response.model_dump()))
+    except WebSocketDisconnect:
+        manager.disconnect("new_session")
+
+@router.websocket("/ws/session/end")
+async def websocket_end_session(websocket: WebSocket):
+    await manager.connect(websocket, "end_session")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            session_req = SessionRequest(**json.loads(data))
+            response = await end_session(session_req)
+            await manager.send_message("end_session", json.dumps(response.model_dump() if response else {}))
+    except WebSocketDisconnect:
+        manager.disconnect("end_session")
+
+@router.websocket("/ws/complete")
+async def websocket_autocomplete(websocket: WebSocket):
+    await manager.connect(websocket, "autocomplete")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            gen_req = GenerateRequest(**json.loads(data))
+            response = await autocomplete_v3(gen_req)
+            await manager.send_message("autocomplete", json.dumps(response.model_dump()))
+    except WebSocketDisconnect:
+        manager.disconnect("autocomplete")
+
+@router.websocket("/ws/verify")
+async def websocket_verify(websocket: WebSocket):
+    await manager.connect(websocket, "verify")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            verify_req = VerifyRequest(**json.loads(data))
+            response = await verify_v3(verify_req)
+            await manager.send_message("verify", json.dumps(response.model_dump()))
+    except WebSocketDisconnect:
+        manager.disconnect("verify")
+
+@router.websocket("/ws/survey")
+async def websocket_survey(websocket: WebSocket):
+    await manager.connect(websocket, "survey")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            survey_req = SurveyRequest(**json.loads(data))
+            response = await survey(survey_req)
+            await manager.send_message("survey", json.dumps(response.model_dump()))
+    except WebSocketDisconnect:
+        manager.disconnect("survey")
+
+# --------------------- Configuration Logic ---------------------
+
 config = CoCoConfig()
 app = FastAPI(
     title       = 'CoCo API',
@@ -248,6 +337,8 @@ app = FastAPI(
 )
 
 app.include_router(router)
+
+# --------------------- Static File Serving ---------------------
 
 @app.get('/')
 @app.get('/index.html')
