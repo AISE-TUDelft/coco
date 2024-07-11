@@ -1,6 +1,7 @@
 import datetime
 import threading
 import time
+from logging import Logger
 
 import sqlalchemy.orm
 from fastapi import FastAPI
@@ -86,13 +87,14 @@ class Session:
         if verify_req.ground_truth is not None:
             self.__user_active_requests[request_id]["ground_truth"].append(verify_req.ground_truth)
 
-    def dump_user_active_requests(self, app: FastAPI) -> None:
+    def dump_user_active_requests(self, app: FastAPI, logger: Logger, store_completions: bool, store_context: bool) -> None:
         """
         A function to dump the active requests of a user to the database.
         """
         for request_id in self.__user_active_requests.keys():
             request = self.__user_active_requests[request_id]
-            add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app)
+            add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app,
+                                     logger, store_completions, store_context)
 
     def get_user_id(self) -> str:
         return self.__user_id
@@ -194,13 +196,14 @@ class SessionManager:
         with self.__lock:
             return self.__sessions.get(session_id)
 
-    def remove_session(self, session_id: str, app: FastAPI):
+    def remove_session(self, session_id: str, app: FastAPI, logger: Logger):
         """
         Remove a session from the session manager.
         """
         with self.__lock:
             session = self.__sessions[session_id]
-            session.dump_user_active_requests(app)
+            session_user_settings = session.get_user_settings()
+            session.dump_user_active_requests(app, logger, session_user_settings["store_completions"], session_user_settings["store_context"])
             session.get_user_database_session().close() # close the database session so there are no memory leaks
             del self.__user_to_session[session.get_user_id()]
             del self.__sessions[session_id]

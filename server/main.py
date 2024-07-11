@@ -4,6 +4,7 @@ import threading
 import time
 from typing import Union
 
+import os
 import logging
 
 import sqlalchemy.orm
@@ -21,6 +22,9 @@ from models import (
     GenerateResponse, VerifyResponse, SurveyResponse, SessionResponse, ErrorResponse,
     CoCoConfig
 )
+
+import pickle
+
 
 # logging config
 logging.basicConfig(level=logging.INFO, filename='coco.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -92,24 +96,49 @@ async def lifespan(app: FastAPI):
     # redis_connection = redis.from_url('redis://localhost', encoding='utf-8', decode_responses=True)
     # await FastAPILimiter.init(redis_connection)
 
-    # I'm using global, instead of declaring these outside the function
-    # scope, for clearer code
     app.config = config
     # app.chain = completion_chain
     app.server_db_session = get_db(app.config)
 
+    # check whether a pickle file exists for some of the values
+    # if so, load them into the app object
+    # check whether a cache/cache.pkl file exists
+
+    try:
+        with open("cache/cache.pkl", "rb") as f:
+            state_dict = pickle.load(f)
+            app.failed_session_attempts = state_dict["failed_session_attempts"]
+            app.blacklisted_ips = state_dict["blacklisted_ips"]
+    except (FileNotFoundError, KeyError) as e:
+        # keep track of how many times an IP address tries to create a session and fails
+        app.failed_session_attempts = {}
+        app.blacklisted_ips = set()
+
     # cache some of the tables in memory for faster access
     cache_tables(app, app.server_db_session)
-
-    # keep track of how many times an IP address tries to create a session and fails
-    app.failed_session_attempts = {}
-    app.blacklisted_ips = set()
-
     app.session_manager = SessionManager(app.config.session_length)
     app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager,), daemon=True)
     app.cleaning_thread.start()
 
     yield
+
+    # save the cache to a pickle file
+    try:
+        with open("cache/cache.pkl", "wb") as f:
+            pickle.dump({"failed_session_attempts": app.failed_session_attempts, "blacklisted_ips": app.blacklisted_ips}, f)
+    except FileNotFoundError as e:
+        os.makedirs("cache")
+        with open("cache/cache.pkl", "wb") as f:
+            pickle.dump({"failed_session_attempts": app.failed_session_attempts, "blacklisted_ips": app.blacklisted_ips}, f)
+
+    # close the server db session
+    app.server_db_session.close()
+
+    # go through the session manager and close / end all the sessions
+    # this ensures that the sessions are properly ended and the resources are freed
+    # we don't want any dangling sessions / memory leaks
+    for session_id in app.session_manager.get_sessions().keys():
+        app.session_manager.remove_session(session_id, app, logger)
 
     # TODO: potential generation model cleanup here
     pass
@@ -176,7 +205,7 @@ async def end_session(session_req: SessionRequest, request: Request) -> None | E
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> No session to end.')
         return ErrorResponse(error='Invalid session token -> No session to end.')
-    app.session_manager.remove_session(session_req.session_id, app)
+    app.session_manager.remove_session(session_req.session_id, app, logger)
     logger.log(logging.INFO, f'Session {session_req.session_id} ended.')
     return None
 

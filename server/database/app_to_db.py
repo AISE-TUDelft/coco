@@ -12,13 +12,13 @@ from sqlalchemy.orm import Session as DBSession
 
 from uuid import uuid4
 
-def get_context_from_request(request: ActiveRequest, coco_version: str, app: FastAPI) -> ContextCreate:
+def get_context_from_request(request: ActiveRequest, coco_version: str, app: FastAPI, store_context: bool) -> ContextCreate:
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a ContextCreate object (see database/db_schemas.py).
     """
     actual_generate_request = request.request
-    prefix = actual_generate_request.prefix
-    suffix = actual_generate_request.suffix
+    prefix = actual_generate_request.prefix if store_context else ""
+    suffix = actual_generate_request.suffix if store_context else ""
     language_id = app.languages[actual_generate_request.language]
     trigger_id = app.trigger_types[actual_generate_request.trigger]
     version_id = app.plugin_versions[coco_version]
@@ -106,35 +106,38 @@ def get_generation_from_request(request: ActiveRequest, query: QueryCreate, app:
 
 
 def add_active_request_to_db(db_session: DBSession, request: ActiveRequest, user_id: str, server_version_id: str,
-                             app: FastAPI, logger: Logger):
+                             app: FastAPI, logger: Logger, store_completions: bool, store_context: bool):
     """
     Go from an ActiveRequest object (see models/Lifecycle.py) to a database entry and add it to the database.
     """
 
     logger.log(f"Adding active request with id {request.request.request_id} to DB for user {user_id}")
     try:
-        context = get_context_from_request(request, server_version_id, app)
-        add_context(db_session, context)
-        logger.log(f"Added context with id {context.context_id} to DB for active request with id {request.request.request_id}")
+        if store_completions:
+            context = get_context_from_request(request, server_version_id, app, store_context)
+            add_context(db_session, context)
+            logger.log(f"Added context with id {context.context_id} to DB for active request with id {request.request.request_id}")
 
-        telemetry = get_telemetry_from_request(request)
-        add_telemetry(db_session, telemetry)
-        logger.log(f"Added telemetry with id {telemetry.telemetry_id} to DB for active request with id {request.request.request_id}")
+            telemetry = get_telemetry_from_request(request)
+            add_telemetry(db_session, telemetry)
+            logger.log(f"Added telemetry with id {telemetry.telemetry_id} to DB for active request with id {request.request.request_id}")
 
 
-        query = get_query_from_request(request, context, telemetry, user_id, app)
-        add_query(db_session, query)
-        logger.log(f"Added query with id {query.query_id} to DB for active request with id {request.request.request_id}")
+            query = get_query_from_request(request, context, telemetry, user_id, app)
+            add_query(db_session, query)
+            logger.log(f"Added query with id {query.query_id} to DB for active request with id {request.request.request_id}")
 
-        generations = get_generation_from_request(request, query, app)
-        for generation in generations:
-            add_generation(db_session, generation)
-        logger.log(f"Added {len(generations)} total generations to DB for active request with id {request.request.request_id}")
+            generations = get_generation_from_request(request, query, app)
+            for generation in generations:
+                add_generation(db_session, generation)
+            logger.log(f"Added {len(generations)} total generations to DB for active request with id {request.request.request_id}")
 
-        ground_truths = get_ground_truths_from_request(request, query)
-        for truth in ground_truths:
-            add_ground_truth(db_session, truth)
-        logger.log(f"Added {len(ground_truths)} total ground truths to DB for active request with id {request.request.request_id}")
+            ground_truths = get_ground_truths_from_request(request, query)
+            for truth in ground_truths:
+                add_ground_truth(db_session, truth)
+            logger.log(f"Added {len(ground_truths)} total ground truths to DB for active request with id {request.request.request_id}")
+        else:
+            logger.log(f"Skipping storing completions for active request with id {request.request.request_id} as per user preferences.")
     except Exception as e:
         print(f"Error adding active request to DB: {e}")
         db_session.rollback()
