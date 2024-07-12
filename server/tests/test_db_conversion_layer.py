@@ -66,24 +66,38 @@ def get_dummy_active_request_and_session() -> Tuple[ActiveRequest, SessionModel]
 class TestAppToDb:
     @pytest.fixture
     def app(self):
-        with patch('main.app') as app:
-            app.languages = {'python': 1}
-            app.trigger_types = {'auto': 1}
-            app.plugin_versions = {'1.0.0': 1}
-            app.llms = {'model_1': 1, 'model_2': 2}
-            app.config.server_version_id = 1
-            yield app
+        app = MagicMock()
+        app.languages = {'python': 1}
+        app.trigger_types = {'auto': 1}
+        app.plugin_versions = {'1.0.0': 1}
+        app.llms = {'model_1': 1, 'model_2': 2}
+        app.config.server_version_id = 1
+        yield app
 
-    def test_get_context_from_request(self, app):
+    def test_get_context_from_request_when_authorized_to_store_context(self, app):
         #Arrange
         active_request, _ = get_dummy_active_request_and_session()
 
         # Act
-        context = get_context_from_request(active_request, "1.0.0", app)
+        context = get_context_from_request(active_request, "1.0.0", app, True)
 
         # Assert
         assert context.prefix == "Hello, my name is"
         assert context.suffix == "Shady"
+        assert context.trigger_type_id == 1
+        assert context.language_id == 1
+        assert context.version_id == 1
+
+    def test_get_context_from_request_when_not_authorized_to_store_context(self, app):
+        #Arrange
+        active_request, _ = get_dummy_active_request_and_session()
+
+        # Act
+        context = get_context_from_request(active_request, "1.0.0", app, False)
+
+        # Assert
+        assert context.prefix == ""
+        assert context.suffix == ""
         assert context.trigger_type_id == 1
         assert context.language_id == 1
         assert context.version_id == 1
@@ -105,7 +119,7 @@ class TestAppToDb:
     def test_get_query_from_request(self, app):
         #Arrange
         active_request, active_session = get_dummy_active_request_and_session()
-        context = get_context_from_request(active_request, "1.0.0", app)
+        context = get_context_from_request(active_request, "1.0.0", app, True)
         telemetry = get_telemetry_from_request(active_request)
 
         # Act
@@ -124,7 +138,7 @@ class TestAppToDb:
     def test_get_ground_truths_from_request(self, app):
         #Arrange
         active_request, _ = get_dummy_active_request_and_session()
-        context = get_context_from_request(active_request, "1.0.0", app)
+        context = get_context_from_request(active_request, "1.0.0", app, True)
         telemetry = get_telemetry_from_request(active_request)
         query = get_query_from_request(active_request, context, telemetry, "user_id", app)
 
@@ -142,7 +156,7 @@ class TestAppToDb:
     def test_get_generation_from_request(self, app):
         # Arrange
         active_request, _ = get_dummy_active_request_and_session()
-        context = get_context_from_request(active_request, "1.0.0", app)
+        context = get_context_from_request(active_request, "1.0.0", app, True)
         telemetry = get_telemetry_from_request(active_request)
         query = get_query_from_request(active_request, context, telemetry, "user_id", app)
 

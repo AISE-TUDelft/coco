@@ -67,6 +67,21 @@ class VerifyRequest(BaseModel):
     # the timestamps at which the completions were shown to the user
     ground_truth: Union[list[tuple[datetime.datetime, str]], None]  # the ground truth of the completion
 
+    model_config = {
+        "session_token": "123aaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "verify_token": "123bbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "chosen_model": "model1",
+        "shown_at": {
+            "model1": ["2021-08-01T12:00:00", "2021-08-01T12:00:05"],
+            "model2": ["2021-08-01T12:00:10"]
+        },
+        "ground_truth": [
+            ["2021-08-01T12:00:00", "np.array(items)"],
+            ["2021-08-01T12:00:05", "np.array(items)"],
+            ["2021-08-01T12:00:10", "np.array(items)"]
+        ]
+    }
+
 
 class SessionRequest(BaseModel):
     """

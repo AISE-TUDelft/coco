@@ -138,7 +138,8 @@ async def lifespan(app: FastAPI):
     # go through the session manager and close / end all the sessions
     # this ensures that the sessions are properly ended and the resources are freed
     # we don't want any dangling sessions / memory leaks
-    for session_id in app.session_manager.get_sessions().keys():
+    sessions = list(app.session_manager.get_sessions().keys())
+    for session_id in sessions:
         app.session_manager.remove_session(session_id, app, logger)
 
     # send a signal to kill the cleaning thread
@@ -181,7 +182,7 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
     if user is None:
         # keep track of IP addresses and how many times they try to create a session and fail
         if ip in app.failed_session_attempts:
-            app.failed_session_attempts[ip] += [datetime.datetime.now()]
+            app.failed_session_attempts[ip].append(datetime.datetime.now())
         else:
             app.failed_session_attempts[ip] = [datetime.datetime.now()]
         if len(app.failed_session_attempts[ip]) >= app.config.max_failed_session_attempts:
@@ -198,6 +199,7 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
         session_id = app.session_manager.add_session(session)
         logger.log(logging.INFO, f'New session created for user {session_req.user_id} with token {session_id}.')
         return SessionResponse(session_id=session_id)
+
 
 @router.post('/session/end')
 async def end_session(session_req: SessionRequest, request: Request) -> None | ErrorResponse:
