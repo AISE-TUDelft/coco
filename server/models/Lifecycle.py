@@ -11,6 +11,12 @@ class ModelCompletionDetails(BaseModel):
     shown_at: List[datetime.datetime]
     accepted: bool = False
 
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
 
 class ActiveRequest(BaseModel):
     request: GenerateRequest

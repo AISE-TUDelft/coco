@@ -117,7 +117,8 @@ async def lifespan(app: FastAPI):
     # cache some of the tables in memory for faster access
     cache_tables(app, app.server_db_session)
     app.session_manager = SessionManager(app.config.session_length)
-    app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager,), daemon=True)
+    stop_event = threading.Event()
+    app.cleaning_thread = threading.Thread(target=delete_expired_sessions, args=(app.session_manager, stop_event), daemon=True)
     app.cleaning_thread.start()
 
     yield
@@ -139,6 +140,10 @@ async def lifespan(app: FastAPI):
     # we don't want any dangling sessions / memory leaks
     for session_id in app.session_manager.get_sessions().keys():
         app.session_manager.remove_session(session_id, app, logger)
+
+    # send a signal to kill the cleaning thread
+    stop_event.set()
+    app.cleaning_thread.join()
 
     # TODO: potential generation model cleanup here
     pass

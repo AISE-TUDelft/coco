@@ -29,6 +29,19 @@ class UserSetting:
                 assert type(self.__settings[key]) == type(base_settings[key]), \
                     f"Expected type {type(base_settings[key])} for key {key}, got {type(self.__settings[key])}"
 
+    def __getitem__(self, key):
+        return self.__settings[key]
+
+    def __setitem__(self, key, value):
+        self.__settings[key] = value
+
+    def __delitem__(self, key):
+        del self.__settings[key]
+
+    # define behavior for when the .keys() method is called
+    def keys(self):
+        return self.__settings.keys()
+
     @staticmethod
     def __base_settings():
         return {
@@ -66,26 +79,32 @@ class Session:
             "time_taken": round(time_taken * 1000), # convert to round milliseconds
             "ground_truth": []
         })
+        self.increment_user_request_count()
 
     def get_session_since(self) -> datetime.datetime:
         return self.__session_since
 
-    def get_active_request(self, request_id: str) -> dict:
+    def get_active_request(self, request_id: str) -> ActiveRequest:
         return self.__user_active_requests[request_id]
 
     def update_active_request(self, request_id: str, verify_req: VerifyRequest):
         # update whether a given model was chosen
         if verify_req.chosen_model is not None:
-            self.__user_active_requests[request_id]["completions"][verify_req.chosen_model]["accepted"] = True
+            self.__user_active_requests[request_id].completions[verify_req.chosen_model]["accepted"] = True
 
         # update the times at which the completions were shown
         if verify_req.shown_at is not None:
             for key in verify_req.shown_at.keys():
-                self.__user_active_requests[request_id]["completions"][key]["shown_at"].append(verify_req.shown_at[key])
+                for item in verify_req.shown_at[key]:
+                    if item not in self.__user_active_requests[request_id].completions[key]["shown_at"]:
+                        self.__user_active_requests[request_id].completions[key]["shown_at"].append(item)
+
 
         # update the ground truth completions
         if verify_req.ground_truth is not None:
-            self.__user_active_requests[request_id]["ground_truth"].append(verify_req.ground_truth)
+            for val in verify_req.ground_truth:
+                if val not in self.__user_active_requests[request_id].ground_truth:
+                    self.__user_active_requests[request_id].ground_truth.append(val)
 
     def dump_user_active_requests(self, app: FastAPI, logger: Logger, store_completions: bool, store_context: bool) -> None:
         """
@@ -93,8 +112,14 @@ class Session:
         """
         for request_id in self.__user_active_requests.keys():
             request = self.__user_active_requests[request_id]
-            add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app,
+            try:
+                add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app,
                                      logger, store_completions, store_context)
+            except Exception as e:
+                logger.error(f"Error while dumping active request {request_id} to the database: {e}")
+                continue
+
+
 
     def get_user_id(self) -> str:
         return self.__user_id
@@ -175,7 +200,7 @@ class SessionManager:
         with self.__lock:
             return self.__user_to_session
 
-    def add_session(self, session: Session):
+    def add_session(self, session: Session) -> str:
         """
         Add a new session to the session manager.
         """
@@ -223,16 +248,13 @@ class SessionManager:
             self.__timers[session.get_expiration_timestamp()].append(session_id)
 
 
-def delete_expired_sessions(session_manager: SessionManager):
-    while True:
+def delete_expired_sessions(session_manager: SessionManager, stop_event: threading.Event = None):
+    while not stop_event.is_set():
         if session_manager.get_current_timeslot() in session_manager.get_timers():
             timers = session_manager.get_timers()
             for session_id in timers[session_manager.get_current_timeslot()]:
                 session = session_manager.get_sessions()[session_id]
                 if session.get_expiration_timestamp() <= session_manager.get_current_timeslot():
-                    session.get_user_database_session().close()  # close the database session so there are no memory leaks
-                    del session_manager.get_user_to_session()[session.get_user_id()]
-                    del session_manager.get_sessions()[session_id]
-                    session_manager.get_timers()[session_manager.get_current_timeslot()].remove(session_id)
+                    session_manager.remove_session(session_id)
         session_manager.goto_next_timeslot()
         time.sleep(5)
