@@ -1,3 +1,6 @@
 [submodule "plugin/jetbrains"]
 	path = plugin/jetbrains
 	url = git@github.com:AISE-TUDelft/coco-jetbrains.git
+[submodule "plugin/vscode"]
+	path = plugin/vscode
+	url = git@github.com:AISE-TUDelft/coco-vscode.git
