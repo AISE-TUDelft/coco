@@ -352,30 +352,81 @@ class TestCoCoAPI:
         assert response_false.json() == VerifyResponse(success=False).model_dump()
 
 
+    def test_websocket_generate_endpoint_with_one_request(self, client):
+        # Arrange
+        gen_req = GenerateRequest.model_config['json_schema_extra']['examples'][0]
+        with (patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists,
+              patch('main.autocomplete_v3') as mocked_completion_generator):
+            # Arrange
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_completion_generator.return_value = GenerateResponse(completions={'model_1': 'np.array(items)'}, time=0.1)
+
+            # establish a websocket connection
+            with client.websocket_connect('/api/v3/ws/complete') as websocket:
+                # Act
+                websocket.send_json(gen_req)
+                response = websocket.receive_json()
+
+                # Assert
+                assert response['completions'] is not None
+                assert response['time'] is not None
+                assert response['completions']['model_1'] == 'np.array(items)'
+                assert response['time'] == 0.1
+
+    def test_having_two_generations_with_same_websocket_connection(self, client):
+        # Arrange
+        gen_req = GenerateRequest.model_config['json_schema_extra']['examples'][0]
+        with (patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists,
+              patch('main.autocomplete_v3') as mocked_completion_generator):
+            # Arrange
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_completion_generator.return_value = GenerateResponse(completions={'model_1': 'np.array(items)'}, time=0.1)
+
+            # establish a websocket connection
+            with client.websocket_connect('/api/v3/ws/complete') as websocket:
+                # Act
+                websocket.send_json(gen_req)
+                response = websocket.receive_json()
+
+                # Assert
+                assert response['completions'] is not None
+                assert response['time'] is not None
+                assert response['completions']['model_1'] == 'np.array(items)'
+                assert response['time'] == 0.1
+
+                # Arrange
+                mocked_completion_generator.return_value = GenerateResponse(completions={'model_2': 'np.array(items2)'}, time=0.2)
+
+                # Act
+                websocket.send_json(gen_req)
+                response = websocket.receive_json()
+
+                # Assert
+                assert response['completions'] is not None
+                assert response['time'] is not None
+                assert response['completions']['model_2'] == 'np.array(items2)'
+                assert response['time'] == 0.2
 
 
-    # def test_generation_is_not_stored(self):
-    #     """
-    #     Issue a single completion request, end-to-end
-    #     testing the endpoints, but with the `store` flag set to False
-    #     """
-    #     raise NotImplementedError('TODO: test that the request is not stored')
-    #
-    #
-    # def test_batch_generation(self):
-    #     """
-    #     Issue a bunch of requests, making sure the time taken
-    #     is less than the sum of each individual request
-    #     (i.e. that batching actually works)
-    #
-    #     TODO: We need florimondmanca/asgi-lifespan to correctly set up the
-    #     lifespan, according to  https://fastapi.tiangolo.com/advanced/async-tests/
-    #     """
-    #     raise NotImplementedError('TODO: test that the time taken is less than the sum of each individual request')
+    def test_verifying_requests_through_websocket(self, client):
+        # Arrange
+        with (patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists,
+              patch('main.verify_v3') as mocked_verify_v3):
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_session.update_active_request.return_value = True
 
-# TODO: Testing generation API likely needs a separate file 
-# with more exhaustive tests for measuring inference speed 
-# and ensuring non-regression in subsequent updates.
+            mocked_verify_v3.return_value = VerifyResponse(success=True)
+
+            # Act
+            with client.websocket_connect('/api/v3/ws/verify') as websocket:
+                websocket.send_json(VerifyRequest.model_config['json_schema_extra']['examples'][0])
+                response = websocket.receive_json()
+
+        # Assert
+        assert response['success'] == True
 
 
 # NOTE: leaving two functions here in case it's useful for future testing

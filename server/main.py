@@ -318,30 +318,6 @@ class WebSocketManager:
 
 manager = WebSocketManager()
 
-@router.websocket("/ws/session/new")
-async def websocket_new_session(websocket: WebSocket):
-    await manager.connect(websocket, "new_session")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            session_req = SessionRequest(**json.loads(data))
-            response = await new_session(session_req)
-            await manager.send_message("new_session", json.dumps(response.model_dump()))
-    except WebSocketDisconnect:
-        manager.disconnect("new_session")
-
-@router.websocket("/ws/session/end")
-async def websocket_end_session(websocket: WebSocket):
-    await manager.connect(websocket, "end_session")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            session_req = SessionRequest(**json.loads(data))
-            response = await end_session(session_req)
-            await manager.send_message("end_session", json.dumps(response.model_dump() if response else {}))
-    except WebSocketDisconnect:
-        manager.disconnect("end_session")
-
 @router.websocket("/ws/complete")
 async def websocket_autocomplete(websocket: WebSocket):
     await manager.connect(websocket, "autocomplete")
@@ -365,18 +341,6 @@ async def websocket_verify(websocket: WebSocket):
             await manager.send_message("verify", json.dumps(response.model_dump()))
     except WebSocketDisconnect:
         manager.disconnect("verify")
-
-@router.websocket("/ws/survey")
-async def websocket_survey(websocket: WebSocket):
-    await manager.connect(websocket, "survey")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            survey_req = SurveyRequest(**json.loads(data))
-            response = await survey(survey_req)
-            await manager.send_message("survey", json.dumps(response.model_dump()))
-    except WebSocketDisconnect:
-        manager.disconnect("survey")
 
 # --------------------- Configuration Logic ---------------------
 
