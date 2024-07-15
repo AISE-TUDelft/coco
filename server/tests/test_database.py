@@ -130,7 +130,11 @@ def create_fresh_database(engine):
     Base.metadata.drop_all(engine)
     # create all tables from init.sql
     with engine.connect() as connection:
-        connection.execute(text(open('../database/init.sql').read()))
+        print(f"working directory: {os.getcwd()}")
+        if os.getcwd().endswith("server"):
+            connection.execute(text(open('./database/init.sql').read()))
+        else:
+            connection.execute(text(open('../database/init.sql').read()))
     engine.dispose()
 
 

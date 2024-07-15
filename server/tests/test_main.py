@@ -180,6 +180,26 @@ class TestCoCoAPI:
         assert response.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
         assert response_after_blacklist.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
 
+    def test_after_blacklist_other_endpoints_do_not_work(self, client):
+        # Arrange
+        session_req_invalid_token = SessionRequest(user_id=str(uuid4()), version="1.0.0", project_ide="VSCode",
+                                                   project_language="python", user_settings={})
+        global config
+        maximum_tries = config.max_failed_session_attempts
+        for i in range(maximum_tries + 1):
+            response = client.post("/api/v3/session/new", json=session_req_invalid_token.model_dump())
+
+        # Act
+        response_session_end = client.post("/api/v3/session/end", json=SessionEndRequest(session_token=str(uuid4())).model_dump())
+        response_verification = client.post("/api/v3/verify", json=VerifyRequest.model_config['json_schema_extra']['examples'][0])
+        response_complete = client.post("/api/v3/complete", json=GenerateRequest.model_config['json_schema_extra']['examples'][0])
+        response_survey = client.post("/api/v3/survey", json=SurveyRequest.model_config['json_schema_extra']['examples'][0])
+
+        # Assert
+        assert response_session_end.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
+        assert response_verification.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
+        assert response_complete.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
+        assert response_survey.json() == ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.').model_dump()
 
     @patch('main.get_user_by_token')
     def test_getting_session_for_valid_user_and_check_not_new_session_created_upon_repeated_request(self, mocked_get_user_by_token, client):
@@ -207,6 +227,59 @@ class TestCoCoAPI:
         assert response2.json()["session_id"] == session_id
 
 
+    def test_end_session_when_session_does_not_exist(self, client):
+        # Arrange
+        session_end_req = SessionEndRequest(session_token=str(uuid4())).model_dump()
+
+        # Act
+        response = client.post("/api/v3/session/end", json=session_end_req)
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == ErrorResponse(error='Invalid session token -> No session to end.').model_dump()
+
+
+    def test_end_session_on_existing_session_works(self, client):
+        # Arrange
+        session_req = SessionRequest(user_id=str(uuid4()), version="1.0.0", project_ide="VSCode",
+                                     project_language="python", user_settings={})
+        with patch('main.get_user_by_token') as mocked_get_user_by_token:
+            mocked_user = MagicMock()
+            mocked_get_user_by_token.return_value = mocked_user
+            response = client.post("/api/v3/session/new", json=session_req.model_dump())
+            session_id = response.json()["session_id"]
+
+            session_end_req = SessionEndRequest(session_token=session_id).model_dump()
+
+            # Act
+            response = client.post("/api/v3/session/end", json=session_end_req)
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() is None
+
+    def test_survey(self, client):
+        # Arrange
+        user_id = str(uuid4())
+        session_req = SessionRequest(user_id=user_id, version="1.0.0", project_ide="VSCode",
+                                     project_language="python", user_settings={})
+        with patch('main.get_user_by_token') as mocked_get_user_by_token:
+            mocked_user = MagicMock()
+            mocked_get_user_by_token.return_value = mocked_user
+            response = client.post("/api/v3/session/new", json=session_req.model_dump())
+            session_id = response.json()["session_id"]
+
+            survey_req = SurveyRequest(session_id=session_id)
+
+            # Act
+            response = client.post("/api/v3/survey", json=survey_req.model_dump())
+
+        global config
+        expected_survey_link = config.survey_link.format(user_id=user_id)
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == SurveyResponse(redirect_url=expected_survey_link).model_dump()
 
 
     #

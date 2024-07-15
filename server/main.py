@@ -12,6 +12,8 @@ from fastapi import FastAPI, APIRouter, Depends, Request, WebSocket, WebSocketDi
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine
+
+from models.Requests import SessionEndRequest
 from models.Sessions import Session, SessionManager, UserSetting, delete_expired_sessions
 # from completion import (chain as completion_chain)
 from database import get_db
@@ -202,18 +204,18 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
 
 
 @router.post('/session/end')
-async def end_session(session_req: SessionRequest, request: Request) -> None | ErrorResponse:
+async def end_session(session_end_req: SessionEndRequest, request: Request) -> None | ErrorResponse:
     """ Endpoint to end a session """
     ip = request.client.host
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> session not ended.')
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    session = app.session_manager.get_session(session_req.session_id)
+    session = app.session_manager.get_session(session_end_req.session_token)
     if session is None:
-        logger.log(logging.ERROR, f'Invalid session token {session_req.session_id} -> No session to end.')
+        logger.log(logging.ERROR, f'Invalid session token {session_end_req.session_token} -> No session to end.')
         return ErrorResponse(error='Invalid session token -> No session to end.')
-    app.session_manager.remove_session(session_req.session_id, app, logger)
-    logger.log(logging.INFO, f'Session {session_req.session_id} ended.')
+    app.session_manager.remove_session(session_end_req.session_token, app, logger)
+    logger.log(logging.INFO, f'Session {session_end_req.session_token} ended.')
     return None
 
 @router.post('/complete')
@@ -279,7 +281,7 @@ async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse |
     if ip in app.blacklisted_ips:
         logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no survey redirection.')
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    user_id = app.session_manager.get_session(survey_req.session_id).user_id
+    user_id = app.session_manager.get_session(survey_req.session_id).get_user_id()
     redirect_url = app.config.survey_link.format(user_id=user_id)
     return SurveyResponse(redirect_url=redirect_url)
 
