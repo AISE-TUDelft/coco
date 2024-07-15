@@ -1,0 +1,3 @@
+[submodule "plugin/jetbrains"]
+	path = plugin/jetbrains
+	url = git@github.com:AISE-TUDelft/coco-jetbrains.git
