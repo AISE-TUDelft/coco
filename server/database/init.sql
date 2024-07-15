@@ -164,7 +164,7 @@ CREATE INDEX idx_query_id_truth_timestamp ON public.ground_truth (query_id, trut
 
 -- now that we have everything set up, we can add some default values
 
-INSERT INTO public.model_name (model_name) VALUES ('deepseek-base-1.3b'), ('starcoder2-3b');
+INSERT INTO public.model_name (model_name) VALUES ('deepseek-1.3b'), ('starcoder2-3b');
 INSERT INTO public.programming_language (language_name) VALUES ('plaintext'), ('code-text-binary'), ('Log'),
                                                                ('log'), ('scminput'), ('bat'), ('clojure'),
                                                                ('coffeescript'), ('jsonc'), ('json'), ('c'), ('cpp'),
@@ -188,10 +188,10 @@ INSERT INTO public.programming_language (language_name) VALUES ('plaintext'), ('
                                                                ('jlweave'), ('rsweave'), ('csv'), ('tsv'), ('jinja'),
                                                                ('pip-requirements'), ('toml'), ('raw'), ('ssh_config'),
                                                                ('Vimscript');
-INSERT INTO public.trigger_type (trigger_type_name) VALUES ('manual'), ('automatic'), ('idle');
+INSERT INTO public.trigger_type (trigger_type_name) VALUES ('man'), ('auto'), ('idle');
 -- we can later add the actual plugin versions
-INSERT INTO public.plugin_version (version_name, ide_type, description) VALUES ('0.0.1', 'JetBrains', 'the mvp version of the plugin'),
-                                                                               ('0.0.1', 'VSCode', 'the mvp version of the plugin');
+INSERT INTO public.plugin_version (version_name, ide_type, description) VALUES ('0.0.1j', 'JetBrains', 'the mvp version of the plugin'),
+                                                                               ('0.0.1v', 'VSCode', 'the mvp version of the plugin');
 
 
 COMMIT;

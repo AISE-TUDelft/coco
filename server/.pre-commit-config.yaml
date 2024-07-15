@@ -19,4 +19,4 @@ repos:
     rev: v0.5.1
     hooks:
     - id: ruff
-      args: [--check]
+      args: ['--fix']

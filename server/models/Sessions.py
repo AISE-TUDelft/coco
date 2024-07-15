@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from database.app_to_db import add_active_request_to_db
 from models import GenerateRequest, VerifyRequest
 from models.Types import LanguageType, IDEType
-from models.Lifecycle import ActiveRequest, ModelCompletionDetails
+from models.Lifecycle import ActiveRequest
 
 
 class UserSetting:
@@ -26,8 +26,9 @@ class UserSetting:
             if key not in self.__settings.keys():
                 self.__settings[key] = self.__base_settings()[key]
             else:
-                assert type(self.__settings[key]) == type(base_settings[key]), \
-                    f"Expected type {type(base_settings[key])} for key {key}, got {type(self.__settings[key])}"
+                assert isinstance(
+                    self.__settings[key], base_settings[key]
+                ), f"Expected instance of {base_settings[key]} for key {key}, got {self.__settings[key]}"
 
     def __getitem__(self, key):
         return self.__settings[key]
@@ -52,9 +53,15 @@ class UserSetting:
 
 
 class Session:
-    def __init__(self, user_id: str, project_primary_language: LanguageType = None,
-                 project_ide: IDEType = None, user_settings: dict = None, db_session: sqlalchemy.orm.Session = None,
-                 project_coco_version: str = None):
+    def __init__(
+        self,
+        user_id: str,
+        project_primary_language: LanguageType = None,
+        project_ide: IDEType = None,
+        user_settings: dict = None,
+        db_session: sqlalchemy.orm.Session = None,
+        project_coco_version: str = None,
+    ):
         """
         Initialize a new session.
         """
@@ -69,16 +76,28 @@ class Session:
         self.__user_active_requests = {}
         self.__user_request_count = 0
 
-    def add_active_request(self, request_id: str, request: GenerateRequest, completions: dict, time_taken: float):
-        self.__user_active_requests[request_id] = ActiveRequest.model_validate({
-            "request": request,
-            "completions": {key: {"completion": completions[key],
-                                  "shown_at": [],
-                                  "accepted": False}
-                            for key in completions.keys()},
-            "time_taken": round(time_taken * 1000), # convert to round milliseconds
-            "ground_truth": []
-        })
+    def add_active_request(
+        self,
+        request_id: str,
+        request: GenerateRequest,
+        completions: dict,
+        time_taken: float,
+    ):
+        self.__user_active_requests[request_id] = ActiveRequest.model_validate(
+            {
+                "request": request,
+                "completions": {
+                    key: {
+                        "completion": completions[key],
+                        "shown_at": [],
+                        "accepted": False,
+                    }
+                    for key in completions.keys()
+                },
+                "time_taken": round(time_taken * 1000),  # convert to round milliseconds
+                "ground_truth": [],
+            }
+        )
         self.increment_user_request_count()
 
     def get_session_since(self) -> datetime.datetime:
@@ -91,38 +110,57 @@ class Session:
         try:
             # update whether a given model was chosen
             if verify_req.chosen_model is not None:
-                self.__user_active_requests[request_id].completions[verify_req.chosen_model]["accepted"] = True
+                self.__user_active_requests[request_id].completions[
+                    verify_req.chosen_model
+                ]["accepted"] = True
 
             # update the times at which the completions were shown
             if verify_req.shown_at is not None:
                 for key in verify_req.shown_at.keys():
                     for item in verify_req.shown_at[key]:
-                        if item not in self.__user_active_requests[request_id].completions[key]["shown_at"]:
-                            self.__user_active_requests[request_id].completions[key]["shown_at"].append(item)
-
+                        if (
+                            item
+                            not in self.__user_active_requests[request_id].completions[
+                                key
+                            ]["shown_at"]
+                        ):
+                            self.__user_active_requests[request_id].completions[key][
+                                "shown_at"
+                            ].append(item)
 
             # update the ground truth completions
             if verify_req.ground_truth is not None:
                 for val in verify_req.ground_truth:
                     if val not in self.__user_active_requests[request_id].ground_truth:
                         self.__user_active_requests[request_id].ground_truth.append(val)
-        except Exception as e:
+        except Exception:
             return False
+        return True
 
-    def dump_user_active_requests(self, app: FastAPI, logger: Logger, store_completions: bool, store_context: bool) -> None:
+    def dump_user_active_requests(
+        self, app: FastAPI, logger: Logger, store_completions: bool, store_context: bool
+    ) -> None:
         """
         A function to dump the active requests of a user to the database.
         """
         for request_id in self.__user_active_requests.keys():
             request = self.__user_active_requests[request_id]
             try:
-                add_active_request_to_db(self.__user_database_session, request, self.__user_id, self.__coco_version, app,
-                                     logger, store_completions, store_context)
+                add_active_request_to_db(
+                    self.__user_database_session,
+                    request,
+                    self.__user_id,
+                    self.__coco_version,
+                    app,
+                    logger,
+                    store_completions,
+                    store_context,
+                )
             except Exception as e:
-                logger.error(f"Error while dumping active request {request_id} to the database: {e}")
+                logger.error(
+                    f"Error while dumping active request {request_id} to the database: {e}"
+                )
                 continue
-
-
 
     def get_user_id(self) -> str:
         return self.__user_id
@@ -171,7 +209,9 @@ class SessionManager:
         """
         self.__sessions = {}
         self.__current_timeslot = 0
-        self.__timers = {} # this will be a dict with the key being the timeslot and the value being a list of session ids
+        self.__timers = (
+            {}
+        )  # this will be a dict with the key being the timeslot and the value being a list of session ids
         self.__default_session_duration = default_session_duration
         self.__user_to_session = {}
         self.__lock = threading.Lock()
@@ -207,7 +247,9 @@ class SessionManager:
         """
         Add a new session to the session manager.
         """
-        session.set_expiration_timestamp(self.__current_timeslot + (self.__default_session_duration // 5))
+        session.set_expiration_timestamp(
+            self.__current_timeslot + (self.__default_session_duration // 5)
+        )
         session_id = str(hash(session))
         with self.__lock:
             self.__sessions[session_id] = session
@@ -231,8 +273,13 @@ class SessionManager:
         with self.__lock:
             session = self.__sessions[session_id]
             session_user_settings = session.get_user_settings()
-            session.dump_user_active_requests(app, logger, session_user_settings["store_completions"], session_user_settings["store_context"])
-            session.get_user_database_session().close() # close the database session so there are no memory leaks
+            session.dump_user_active_requests(
+                app,
+                logger,
+                session_user_settings["store_completions"],
+                session_user_settings["store_context"],
+            )
+            session.get_user_database_session().close()  # close the database session so there are no memory leaks
             del self.__user_to_session[session.get_user_id()]
             del self.__sessions[session_id]
             self.__timers[session.get_expiration_timestamp()].remove(session_id)
@@ -243,7 +290,9 @@ class SessionManager:
         """
         with self.__lock:
             session = self.__sessions[session_id]
-            new_expiration_timestamp = self.__current_timeslot + (self.__default_session_duration // 5)
+            new_expiration_timestamp = self.__current_timeslot + (
+                self.__default_session_duration // 5
+            )
             self.__timers[session.get_expiration_timestamp()].remove(session_id)
             session.set_expiration_timestamp(new_expiration_timestamp)
             if session.get_expiration_timestamp() not in self.__timers:
@@ -251,13 +300,18 @@ class SessionManager:
             self.__timers[session.get_expiration_timestamp()].append(session_id)
 
 
-def delete_expired_sessions(session_manager: SessionManager, stop_event: threading.Event = None):
+def delete_expired_sessions(
+    session_manager: SessionManager, stop_event: threading.Event = None
+):
     while not stop_event.is_set():
         if session_manager.get_current_timeslot() in session_manager.get_timers():
             timers = session_manager.get_timers()
             for session_id in timers[session_manager.get_current_timeslot()]:
                 session = session_manager.get_sessions()[session_id]
-                if session.get_expiration_timestamp() <= session_manager.get_current_timeslot():
+                if (
+                    session.get_expiration_timestamp()
+                    <= session_manager.get_current_timeslot()
+                ):
                     session_manager.remove_session(session_id)
         session_manager.goto_next_timeslot()
         time.sleep(5)
