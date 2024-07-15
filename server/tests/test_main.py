@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import os
+import sys
 from uuid import uuid4
 
 import pytest
@@ -13,7 +14,7 @@ from starlette.requests import Request
 
 from models import (
     GenerateRequest, SurveyRequest, SurveyResponse,
-    GenerateResponse, Session, SessionRequest, ErrorResponse, VerifyRequest
+    GenerateResponse, Session, SessionRequest, ErrorResponse, VerifyRequest, VerifyResponse
 )
 
 from fastapi.responses import FileResponse
@@ -21,6 +22,7 @@ from fastapi.responses import FileResponse
 from models.Requests import SessionEndRequest
 
 global config
+global mock_chain
 
 class TestCoCoAPI:
 
@@ -28,12 +30,19 @@ class TestCoCoAPI:
     def client(self):
         """ Run the FastAPI server with its lifespan context """
         load_dotenv()
-        from main import app, config as _config
-        global config
-        config = _config
 
-        with TestClient(app) as client:
-            yield client
+        mock_completion = MagicMock()
+        global mock_chain
+        mock_chain = MagicMock(return_value='mocked chain behavior')
+        mock_completion.chain = mock_chain
+
+        with patch.dict('sys.modules', {'completion': mock_completion}):  # mock the completion module
+            from main import app, config as _config
+            global config
+            config = _config
+
+            with TestClient(app) as client:
+                yield client
 
         # check whether a cache folder exists and delete it even if it's not empty
         if os.path.exists('cache'):
@@ -282,49 +291,69 @@ class TestCoCoAPI:
         assert response.json() == SurveyResponse(redirect_url=expected_survey_link).model_dump()
 
 
-    #
-    # def test_verification(self, client):
-    #         raise NotImplementedError('TODO: test the verification endpoint')
-    #
-    # def test_survey(self, client):
-    #     """
-    #     Check we can send a SurveyRequest and parse
-    #     the response as a SurveyResponse.
-    #     """
-    #     # might as well test with the API examples right
-    #     example_req = SurveyRequest.model_config['json_schema_extra']['examples'][0]
-    #     user_id = example_req['user_id']
-    #     survey_link = config.survey_link.format(user_id=user_id)
-    #
-    #     response = client.post('api/v3/survey',
-    #                         json=SurveyRequest(user_id=user_id).model_dump())
-    #
-    #     assert response.status_code == 200
-    #     response = SurveyResponse(**response.json())
-    #     assert response.redirect_url == survey_link
-    #
-    #
-    # def test_generation(self):
-    #     """
-    #     Issue a single completion request, end-to-end
-    #     testing the endpoints.
-    #     """
-    #     # FastAPI context managers require you to wrap it before you tap it
-    #     # in a test https://fastapi.tiangolo.com/advanced/testing-events/
-    #     # TODO: refactor this to a setup/teardown fixture somehow.
-    #     with TestClient(app) as client:
-    #
-    #         gen_req = GenerateRequest.model_config['json_schema_extra']['examples'][0]
-    #         json = GenerateRequest(**gen_req | {'store': False}).model_dump()
-    #         response = client.post('api/v3/complete', json=json)
-    #
-    #         assert response.status_code == 200
-    #         assert len(response.json()['completions']) > 0
-    #
-    #         # TODO: let's also assert that these things are in fact stored
-    #         json = GenerateRequest(**gen_req | {'store': True})
-    #         raise NotImplementedError('TODO: test that the request is stored')
-    #
+    def test_complete_endpoint_when_one_request_one_generation(self, client):
+        gen_req = GenerateRequest.model_config['json_schema_extra']['examples'][0]
+        with (patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists,
+              patch('main.request_in_limit') as mocked_request_in_limit):
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_request_in_limit.return_value = True
+
+            # define the mocked completion function
+            global mock_chain
+            mock_response = MagicMock(return_value={'model_1': 'np.array(items)'})
+            mock_chain.invoke = mock_response
+
+            response = client.post('api/v3/complete', json=gen_req)
+
+        assert response.status_code == 200
+        for key in response.json()["completions"]:
+            assert len(response.json()["completions"][key]) > 0
+
+    def test_complete_endpoint_when_generation_throws(self, client):
+        gen_req = GenerateRequest.model_config['json_schema_extra']['examples'][0]
+        with (patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists,
+              patch('main.request_in_limit') as mocked_request_in_limit):
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_request_in_limit.return_value = True
+
+            # define the mocked completion function
+            global mock_chain
+            mock_response = MagicMock(return_value={'model_1': 'np.array(items)'})
+            mock_chain.invoke = mock_response
+            mock_response.side_effect = Exception('mocked exception')
+
+            response = client.post('api/v3/complete', json=gen_req)
+
+        assert response.status_code == 200
+        assert response.json()['error'] == 'Error generating completions.'
+
+    def test_verification_of_active_request(self, client):
+        with patch('main.get_session_by_token_if_exists') as mocked_get_session_by_token_if_exists:
+            # Arrange
+            mocked_session = MagicMock()
+            mocked_get_session_by_token_if_exists.return_value = mocked_session
+            mocked_session.update_active_request.return_value = True
+
+            # Act
+            response_true = client.post('api/v3/verify', json=VerifyRequest.model_config['json_schema_extra']['examples'][0])
+
+            # Arrange
+            mocked_session.update_active_request.return_value = False
+
+            # Act
+            response_false = client.post('api/v3/verify', json=VerifyRequest.model_config['json_schema_extra']['examples'][0])
+
+        # Assert
+        assert response_true.status_code == 200
+        assert response_false.status_code == 200
+        assert response_true.json() == VerifyResponse(success=True).model_dump()
+        assert response_false.json() == VerifyResponse(success=False).model_dump()
+
+
+
+
     # def test_generation_is_not_stored(self):
     #     """
     #     Issue a single completion request, end-to-end
@@ -343,7 +372,6 @@ class TestCoCoAPI:
     #     lifespan, according to  https://fastapi.tiangolo.com/advanced/async-tests/
     #     """
     #     raise NotImplementedError('TODO: test that the time taken is less than the sum of each individual request')
-    #
 
 # TODO: Testing generation API likely needs a separate file 
 # with more exhaustive tests for measuring inference speed 

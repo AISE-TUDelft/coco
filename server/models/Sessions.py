@@ -87,24 +87,27 @@ class Session:
     def get_active_request(self, request_id: str) -> ActiveRequest:
         return self.__user_active_requests[request_id]
 
-    def update_active_request(self, request_id: str, verify_req: VerifyRequest):
-        # update whether a given model was chosen
-        if verify_req.chosen_model is not None:
-            self.__user_active_requests[request_id].completions[verify_req.chosen_model]["accepted"] = True
+    def update_active_request(self, request_id: str, verify_req: VerifyRequest) -> bool:
+        try:
+            # update whether a given model was chosen
+            if verify_req.chosen_model is not None:
+                self.__user_active_requests[request_id].completions[verify_req.chosen_model]["accepted"] = True
 
-        # update the times at which the completions were shown
-        if verify_req.shown_at is not None:
-            for key in verify_req.shown_at.keys():
-                for item in verify_req.shown_at[key]:
-                    if item not in self.__user_active_requests[request_id].completions[key]["shown_at"]:
-                        self.__user_active_requests[request_id].completions[key]["shown_at"].append(item)
+            # update the times at which the completions were shown
+            if verify_req.shown_at is not None:
+                for key in verify_req.shown_at.keys():
+                    for item in verify_req.shown_at[key]:
+                        if item not in self.__user_active_requests[request_id].completions[key]["shown_at"]:
+                            self.__user_active_requests[request_id].completions[key]["shown_at"].append(item)
 
 
-        # update the ground truth completions
-        if verify_req.ground_truth is not None:
-            for val in verify_req.ground_truth:
-                if val not in self.__user_active_requests[request_id].ground_truth:
-                    self.__user_active_requests[request_id].ground_truth.append(val)
+            # update the ground truth completions
+            if verify_req.ground_truth is not None:
+                for val in verify_req.ground_truth:
+                    if val not in self.__user_active_requests[request_id].ground_truth:
+                        self.__user_active_requests[request_id].ground_truth.append(val)
+        except Exception as e:
+            return False
 
     def dump_user_active_requests(self, app: FastAPI, logger: Logger, store_completions: bool, store_context: bool) -> None:
         """

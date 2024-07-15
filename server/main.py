@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 
 from models.Requests import SessionEndRequest
 from models.Sessions import Session, SessionManager, UserSetting, delete_expired_sessions
-# from completion import (chain as completion_chain)
+from completion import chain as completion_chain
 from database import get_db
 from database.crud import (get_user_by_token, get_all_plugin_versions, get_all_programming_languages,
                            get_all_trigger_types, get_all_db_models)
@@ -89,6 +89,23 @@ def request_in_limit(app: FastAPI, session: Session):
     return True
 
 
+def ensure_not_blacklisted_ip(fastapi: FastAPI, ip: str):
+    """
+    A function which checks if the IP address is blacklisted.
+    """
+    if ip in fastapi.blacklisted_ips:
+        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no completions generated.')
+        return False
+    return True
+
+
+def get_session_by_token_if_exists(fastapi: FastAPI, session_token: str):
+    """
+    A function which gets the session by token if it exists.
+    """
+    return fastapi.session_manager.get_session(session_token)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -99,7 +116,7 @@ async def lifespan(app: FastAPI):
     # await FastAPILimiter.init(redis_connection)
 
     app.config = config
-    # app.chain = completion_chain
+    app.chain = completion_chain
     app.server_db_session = get_db(app.config)
 
     # check whether a pickle file exists for some of the values
@@ -166,8 +183,7 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
     """
     # get the request IP address
     ip = request.client.host
-    if ip in app.blacklisted_ips:
-        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> session not created.')
+    if not ensure_not_blacklisted_ip(app, ip):
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
     logger.log(logging.INFO, f'User {session_req.user_id} requested a new session from version '
                              f'{session_req.version} of the plugin for {session_req.project_ide}.')
@@ -207,10 +223,9 @@ async def new_session(session_req: SessionRequest, request: Request) -> Union[Se
 async def end_session(session_end_req: SessionEndRequest, request: Request) -> None | ErrorResponse:
     """ Endpoint to end a session """
     ip = request.client.host
-    if ip in app.blacklisted_ips:
-        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> session not ended.')
+    if not ensure_not_blacklisted_ip(app, ip):
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    session = app.session_manager.get_session(session_end_req.session_token)
+    session = get_session_by_token_if_exists(app, session_end_req.session_token)
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {session_end_req.session_token} -> No session to end.')
         return ErrorResponse(error='Invalid session token -> No session to end.')
@@ -222,18 +237,14 @@ async def end_session(session_end_req: SessionEndRequest, request: Request) -> N
 async def autocomplete_v3(gen_req: GenerateRequest, request: Request) -> ErrorResponse | GenerateResponse:
     """ Endpoint to generate a dict of completions; {model_name: completion} """
     ip = request.client.host
-    if ip in app.blacklisted_ips:
-        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no completions generated.')
+    if not ensure_not_blacklisted_ip(app, ip):
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    session = app.session_manager.get_session(gen_req.session_id)
-    if session is None:
-        logger.log(logging.ERROR, f'Invalid session token {gen_req.session_id} -> no completions generated.')
-        return ErrorResponse(error='Invalid session token -> no completions generated.')
-    logger.log(logging.INFO, f'User {gen_req.session_id} requested completions with completion id {gen_req.request_id}.')
+    session = get_session_by_token_if_exists(app, gen_req.session_id)
     if session is None:
         logger.log(logging.ERROR, f'Invalid session token {gen_req.session_id} -> no completions generated.')
         return ErrorResponse(error='Invalid session token -> no completions generated.')
     else:
+        logger.log(logging.INFO, f'User {gen_req.session_id} requested completions with completion id {gen_req.request_id}.')
         try:
             if not request_in_limit(app, session):
                 return ErrorResponse(error='User has exceeded the request limit -> no completions generated.')
@@ -255,20 +266,19 @@ async def verify_v3(verify_req: VerifyRequest, request: Request) -> ErrorRespons
     Note -> verification of the completion can be still carried out even if the request limit has been exceeded.
     """
     ip = request.client.host
-    if ip in app.blacklisted_ips:
-        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no verification done.')
+    if not ensure_not_blacklisted_ip(app, ip):
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    session = app.session_manager.get_session(verify_req.session_id)
+    session = get_session_by_token_if_exists(app, verify_req.session_token)
     if session is None:
-        logger.log(logging.ERROR, f'Invalid session token {verify_req.session_id} -> no verification done.')
+        logger.log(logging.ERROR, f'Invalid session token {verify_req.session_token} -> no verification done.')
         return ErrorResponse(error='Invalid session token -> no verification done.')
     # TODO: update this implementation to be more robust after the completion of the MVPs for the server
     # Details -> the current implementation will fail given that a verify request is sent for a session that has
     # ended or requests that have already been stored to the DB. It might be the case that we would want to do a
     # more longitudinal study of the completions generated and verified and thus we would want to store all the
     # completions generated and verified in the DB -> This would necessitate a change in the current implementation
-    session.update_active_request(verify_req.verify_token, verify_req) # update the active request with the verification
-    return VerifyResponse(success=True)
+    suceeded = session.update_active_request(verify_req.verify_token, verify_req) # update the active request with the verification
+    return VerifyResponse(success=suceeded)
 
 
 @router.post('/survey')
@@ -278,12 +288,16 @@ async def survey(survey_req: SurveyRequest, request: Request) -> ErrorResponse |
     Note -> survey redirection can be still carried out even if the request limit has been exceeded.
     """
     ip = request.client.host
-    if ip in app.blacklisted_ips:
-        logger.log(logging.ERROR, f'IP address {ip} is blacklisted -> no survey redirection.')
+    if not ensure_not_blacklisted_ip(app, ip):
         return ErrorResponse(error='Access denied. - Blacklisted - Contact us if you think this is a mistake.')
-    user_id = app.session_manager.get_session(survey_req.session_id).get_user_id()
-    redirect_url = app.config.survey_link.format(user_id=user_id)
-    return SurveyResponse(redirect_url=redirect_url)
+    session = get_session_by_token_if_exists(app, survey_req.session_id)
+    if session is None:
+        logger.log(logging.ERROR, f'Invalid session token {survey_req.session_id} -> no survey redirection done.')
+        return ErrorResponse(error='Invalid session token -> no survey redirection done.')
+    else:
+        user_id = session.get_user_id()
+        redirect_url = app.config.survey_link.format(user_id=user_id)
+        return SurveyResponse(redirect_url=redirect_url)
 
 # --------------------- WebSocket Endpoints ---------------------
 class WebSocketManager:
