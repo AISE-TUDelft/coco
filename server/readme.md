@@ -20,13 +20,18 @@ pip install -r requirements.txt
 sudo apt update
 sudo apt install gnupg2 wget nano
 
+sudo apt install lsb-release
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
 sudo apt update
 
 sudo apt install postgresql-16 postgresql-contrib-16
+
 sudo systemctl start postgresql
-sudo systemctl enable postgresql
+sudo systemctl enable PostgreSQL
+# Or in case of absence of systemctl (as in case of Docker containers on Ronaldo):
+# sudo service postgresql start
+ 
 ```
 
 You can then create a user and database for the project.
