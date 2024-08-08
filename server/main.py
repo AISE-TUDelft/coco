@@ -6,13 +6,16 @@ from typing import Union
 
 import os
 import logging
+from uuid import uuid4
 
 import sqlalchemy.orm
 from fastapi import FastAPI, APIRouter, Request, WebSocket, WebSocketDisconnect
 from starlette.responses import FileResponse
 from contextlib import asynccontextmanager
 
+from database.db_schemas import UserCreate
 from models.Requests import SessionEndRequest
+from models.Responses import NewUserResponse
 from models.Sessions import (
     Session,
     SessionManager,
@@ -26,6 +29,7 @@ from database.crud import (
     get_all_programming_languages,
     get_all_trigger_types,
     get_all_db_models,
+    create_user,
 )
 from models import (
     GenerateRequest,
@@ -236,6 +240,33 @@ router = APIRouter(prefix="/api/v3")
 
 # TODO: Try streaming to reduce latency
 # TODO: Can squeeze out a little more performance with https://fastapi.tiangolo.com/advanced/custom-response/#use-orjsonresponse
+
+
+@router.post("/user/new")
+async def new_user(request: Request) -> Union[NewUserResponse | ErrorResponse]:
+    """
+    Endpoint to create a new user.
+    """
+    ip = request.client.host
+    if not ensure_not_blacklisted_ip(app, ip):
+        return ErrorResponse(
+            error="Access denied. - Blacklisted - Contact us if you think this is a mistake."
+        )
+    logger.log(logging.INFO, "New user requested.")
+    db_session = app.server_db_session
+    try:
+        user_obj = UserCreate(
+            token=str(uuid4()),
+            joined_at=str(
+                datetime.datetime.now(tz=datetime.datetime.now().astimezone().tzinfo)
+            ),
+        )
+        user = create_user(db_session, user_obj)
+    except Exception as e:
+        logger.log(logging.ERROR, f"Error creating user: {e}")
+        return ErrorResponse(error="Error creating user.")
+
+    return NewUserResponse(user_id=str(user.token))
 
 
 @router.post("/session/new")

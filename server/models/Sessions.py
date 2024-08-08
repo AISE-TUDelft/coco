@@ -19,6 +19,12 @@ class UserSetting:
 
     def __init__(self, settings: dict):
         self.__settings = settings
+        for key in self.__settings.keys():
+            if isinstance(self.__settings[key], str):
+                if self.__settings[key].lower() == "true":
+                    self.__settings[key] = True
+                elif self.__settings[key].lower() == "false":
+                    self.__settings[key] = False
         if self.__settings is None:
             self.__settings = {}
         base_settings = self.__base_settings()
@@ -27,7 +33,7 @@ class UserSetting:
                 self.__settings[key] = self.__base_settings()[key]
             else:
                 assert isinstance(
-                    self.__settings[key], base_settings[key]
+                    self.__settings[key], type(base_settings[key])
                 ), f"Expected instance of {base_settings[key]} for key {key}, got {self.__settings[key]}"
 
     def __getitem__(self, key):
@@ -109,7 +115,7 @@ class Session:
     def update_active_request(self, request_id: str, verify_req: VerifyRequest) -> bool:
         try:
             # update whether a given model was chosen
-            if verify_req.chosen_model is not None:
+            if verify_req.chosen_model is not None and len(verify_req.chosen_model) > 0:
                 self.__user_active_requests[request_id].completions[
                     verify_req.chosen_model
                 ]["accepted"] = True
