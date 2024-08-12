@@ -19,14 +19,15 @@ class UserSetting:
 
     def __init__(self, settings: dict):
         self.__settings = settings
+        if self.__settings is None:
+            self.__settings = {}
         for key in self.__settings.keys():
             if isinstance(self.__settings[key], str):
                 if self.__settings[key].lower() == "true":
                     self.__settings[key] = True
                 elif self.__settings[key].lower() == "false":
                     self.__settings[key] = False
-        if self.__settings is None:
-            self.__settings = {}
+
         base_settings = self.__base_settings()
         for key in base_settings.keys():
             if key not in self.__settings.keys():
