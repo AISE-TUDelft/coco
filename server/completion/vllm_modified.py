@@ -22,6 +22,7 @@ from langchain_core.language_models.llms import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from langchain_core.pydantic_v1 import Field, root_validator
 from vllm import SamplingParams
+import asyncio 
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 from langchain_core.language_models.base import LanguageModelInput
@@ -160,7 +161,7 @@ class VLLM_M(BaseLLM):
             generations.append([Generation(text=text, generation_info=generation_info)])
 
         return LLMResult(generations=generations)
-        
+
     async def _agenerate(
         self,
         prompts: List[str],
@@ -174,8 +175,9 @@ class VLLM_M(BaseLLM):
         params = {**self._default_params, **kwargs, "stop": stop}
         sampling_params = SamplingParams(**params)
 
-        # Call the model asynchronously
-        outputs = await self.client.generate(prompts, sampling_params)
+        # Temporary solution using asyincio threads - instead, will probably need to override self.client.generate (vLLM methods from llm.py file, 
+        # namely - change generate and _run_engine to async counterparts, not sure yet)
+        outputs = await asyncio.to_thread(self.client.generate, prompts, sampling_params)
 
         generations = []
         for output in outputs:
