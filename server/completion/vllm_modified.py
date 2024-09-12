@@ -17,7 +17,7 @@ I also add `_agenerate` and `ainvoke` because we're in async land.
 
 from typing import Any, Dict, List, Optional
 
-from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain_core.language_models.llms import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from langchain_core.pydantic_v1 import Field, root_validator
@@ -160,6 +160,36 @@ class VLLM_M(BaseLLM):
             generations.append([Generation(text=text, generation_info=generation_info)])
 
         return LLMResult(generations=generations)
+        
+    async def _agenerate(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> LLMResult:
+        ''' Run the LLM on the given prompt and input asynchronously. Return logprobs and other metadata. '''
+        
+        # Build sampling parameters
+        params = {**self._default_params, **kwargs, "stop": stop}
+        sampling_params = SamplingParams(**params)
+
+        # Call the model asynchronously
+        outputs = await self.client.generate(prompts, sampling_params)
+
+        generations = []
+        for output in outputs:
+            output = output.outputs[0]
+            text = output.text
+            
+            # NOTE: added modification
+            # Get all the other metadata e.g. logprobs and stop reason
+            del output.__dict__['text']
+            generation_info = output.__dict__
+
+            generations.append([Generation(text=text, generation_info=generation_info)])
+
+        return LLMResult(generations=generations)
 
     # NOTE: Added from langchain_core.language_models.llms.BaseLLM
     def invoke(
@@ -183,6 +213,26 @@ class VLLM_M(BaseLLM):
         ).generations[0][0]
         return llm_result
 
+    async def ainvoke(
+        self,
+        input: LanguageModelInput,
+        config: Optional[RunnableConfig] = None,
+        *,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> Generation:
+        config = ensure_config(config)
+        llm_result = await self.agenerate_prompt(
+            [self._convert_input(input)],
+            stop=stop,
+            callbacks=config.get("callbacks"),
+            tags=config.get("tags"),
+            metadata=config.get("metadata"),
+            run_name=config.get("run_name"),
+            run_id=config.pop("run_id", None),
+            **kwargs,
+        )
+        return llm_result.generations[0][0]
 
     @property
     def _llm_type(self) -> str:
