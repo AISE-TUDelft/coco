@@ -37,7 +37,8 @@ class TestEndToEnd:
 
     @pytest.fixture(scope="function")
     def client(self, db_session: sessionmaker[sql_session]):
-        # TODO: remove the mocking behavior and use the actual completion chain when fully implemented
+        # TODO: Adjust for several LLMs once implemented
+        
         mock_completion = MagicMock()
         global mock_chain
         mock_chain = MagicMock()
@@ -126,7 +127,6 @@ class TestEndToEnd:
             generate_req.timestamp = generate_req.timestamp.isoformat()
 
         # define the mocked behavior of the completion chain
-        # TODO: also remove this
         global mock_chain
         mock_response = MagicMock(return_value={"deepseek-1.3b": "np.array(items)"})
         mock_chain.invoke = mock_response

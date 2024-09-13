@@ -405,7 +405,7 @@ async def autocomplete_v3(
             return GenerateResponse(time=t, completions=completions)
         except Exception as e:
             logger.log(logging.ERROR, f"Error generating completions: {e}")
-            return ErrorResponse(error="Error generating completions.")
+            return ErrorResponse(error="Error generating completions.")        
 
 
 @router.post("/verify")
