@@ -18,5 +18,5 @@ $ pytest
 Or, to run specific tests:
 
 ```bash
-$ pytest test_main.py -k 'test_homepage'
+$ pytest test_main.py
 ```
