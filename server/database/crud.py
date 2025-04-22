@@ -21,6 +21,7 @@ def is_valid_uuid(uuid: str) -> bool:
 
 # READ operation
 # User Table
+#TODO: change this to db_models.User
 def get_all_users(db: Session) -> list[Type[User]]:
     return db.query(db_models.User).all()
 
@@ -45,6 +46,7 @@ def get_user_queries(db: Session, user_id: str) -> list[db_models.Query]:
     return db.query(db_models.Query).filter(db_models.Query.user_id == user_id).all()
 
 
+#TODO: change this to db_models.Query
 def get_queries_in_time_range(db: Session, start_time: str = None, end_time: str = None) -> list[Type[Query]]:
     if start_time and end_time:
         return db.query(db_models.Query).filter(db_models.Query.timestamp >= start_time,
@@ -56,6 +58,7 @@ def get_queries_in_time_range(db: Session, start_time: str = None, end_time: str
     return db.query(db_models.Query).all()
 
 
+#TODO: change this to db_models.Query
 def get_queries_bound_by_context(db: Session, context_id: str) -> list[Type[Query]]:
     assert is_valid_uuid(context_id)
     return db.query(db_models.Query).filter(db_models.Query.context_id == context_id).all()

@@ -529,8 +529,6 @@ app = FastAPI(
 app.include_router(router)
 
 # --------------------- Static File Serving ---------------------
-
-
 @app.get("/")
 @app.get("/index.html")
 async def root():

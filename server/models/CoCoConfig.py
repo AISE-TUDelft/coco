@@ -24,3 +24,7 @@ class CoCoConfig(BaseSettings):
     db_user: str = Field(alias="DB_USER", frozen=True)
     db_name: str = Field(alias="DB_NAME", frozen=True)
     db_port: int = Field(alias="DB_PORT", frozen=True)
+    # Extra configs added for pgadmin support
+    pgadmin_port: int = Field(alias="PGADMIN_PORT", frozen=True)
+    pgadmin_user: str = Field(alias="PGADMIN_DEFAULT_EMAIL", frozen=True)
+    pgadmin_password: str = Field(alias="PGADMIN_DEFAULT_PASSWORD", frozen=True)

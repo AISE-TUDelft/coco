@@ -15,27 +15,42 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_DB=${DB_NAME}
 
+  pgadmin:
+    image: dpage/pgadmin4:8.11
+    container_name: pgadmin
+    ports:
+      - ${PGADMIN_PORT}:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
   web:
     build: .
     container_name: fastapi_app
-    command: ["/bin/bash", "-c", "source activate myenv && uvicorn main:app --host 0.0.0.0 --port 8000"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+    command: ["/bin/bash", "-c", "source activate myenv && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
     expose:
       - 8000
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
     depends_on:
       - db
+    # For development purposes only
+    volumes:
+        - .:/app
 
 
   nginx:
-    image: nginx:latest
+    image: nginx:1.25
     container_name: nginx
     ports:
       - "80:80"
@@ -47,3 +62,4 @@ services:
 
 volumes:
   postgres_data:
+  pgadmin_data:

@@ -61,7 +61,6 @@ VLLM Engine. Supported features:
 3. Automatic Prefix Caching (APC) for long-document queries 
     and multi-round conversation. 
 '''
-
 llm = VLLM_M(
     model='deepseek-ai/deepseek-coder-1.3b-base',
     trust_remote_code=True, 
@@ -82,4 +81,13 @@ llm = VLLM_M(
     presence_penalty=1.0    # penalise new tokens based on their frequency in the generated text so far
 )
 
-llm_chain = prompt | llm 
+# Uncomment for support for no GPU
+# from transformers import AutoTokenizer, AutoModelForCausalLM, TextGenerationPipeline
+# from langchain.llms import HuggingFacePipeline
+# import torch
+# model_id = "deepseek-ai/deepseek-coder-1.3b-base"
+# tokenizer = AutoTokenizer.from_pretrained(model_id)
+# model = AutoModelForCausalLM.from_pretrained(model_id,torch_dtype=torch.float16, device_map="auto") # Automatically uses GPU/CPU as available)
+# generation_pipeline = TextGenerationPipeline(model=model, tokenizer=tokenizer)
+# llm = HuggingFacePipeline(pipeline=generation_pipeline)
+llm_chain = prompt | llm
